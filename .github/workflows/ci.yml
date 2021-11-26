@@ -94,8 +94,11 @@ jobs:
     - name: Run Tests
       shell: pwsh
       run: |
-        whoami.exe /all
-        Get-LocalUser
+        Import-Module -Name ./output/ProcessEx
+
+        $cred = [PSCredential]::new($env:PROCESSEX_USER,
+            (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS))
+        Start-ProcessWith whoami.exe /all -Credential $cred
 
         & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test
         exit $LASTEXITCODE
