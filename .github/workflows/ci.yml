@@ -21,6 +21,8 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_NOLOGO: true
   BUILD_CONFIGURATION: ${{ fromJSON('["Debug", "Release"]')[startsWith(github.ref, 'refs/tags/v')] }}
+  PROCESSEX_USER: gha-test
+  PROCESSEX_PASS: Password123!
 
 jobs:
   build:
@@ -32,7 +34,24 @@ jobs:
 
     - name: Build module
       shell: pwsh
-      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
+      run: |
+        ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
+        Import-Module -Name tools\Modules\PSPrivilege
+
+        $userParams = @{
+            Name = $env:PROCESSEX_USER
+            Password = (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS)
+            Description = "Test user for GHA with higher privileges"
+            AccountNeverExpires = $true
+            PasswordNeverExpires = $true
+            UserMayNotChangePassword = $true
+        }
+        $user = New-LocalUser -Name
+        Add-LocalGroupMember -Group Administrators -Member $user
+        Add-WindowsRight -Name SeAssignPrimaryTokenPrivilege -Account @(
+            $user.SID,
+            ([System.Security.Principal.WindowsIdentity]::GetCurrent().User)
+        )
 
     - name: Capture PowerShell Module
       uses: actions/upload-artifact@v2
@@ -88,6 +107,9 @@ jobs:
     - name: Run Tests
       shell: pwsh
       run: |
+        whoami.exe /all
+        Get-LocalUser
+
         & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test
         exit $LASTEXITCODE
 
