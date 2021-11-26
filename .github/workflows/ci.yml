@@ -96,9 +96,19 @@ jobs:
       run: |
         Import-Module -Name ./output/ProcessEx
 
-        $cred = [PSCredential]::new($env:PROCESSEX_USER,
+        $cred = [PSCredential]::new("$($env:COMPUTERNAME)\$($env:PROCESSEX_USER)",
             (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS))
-        Start-ProcessWith whoami.exe /all -Credential $cred
+
+        Add-Type -Namespace Kernel32 -Name Native -MemberDefinition @'
+        [DllImport("Kernel32.dll")]
+        public static extern IntPtr GetStdHandle(int nStdHandle);
+        '@
+
+        $stdout = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Kernel32.Native]::GetStdHandle(-11), $false)
+        $stderr = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Kernel32.Native]::GetStdHandle(-12), $false)
+
+        $si = New-StartupInfo -StandardOutput $stdout -StandardError $stderr
+        Start-ProcessWith whoami.exe /all -Credential $cred -StartupInfo $si -Wait
 
         & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test
         exit $LASTEXITCODE
