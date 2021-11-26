@@ -19,9 +19,10 @@ param (
     $Argument
 )
 
+$password = "Password123!"
 $userParams = @{
     Name = "CITestUser"
-    Password = "Password123!"
+    Password = (ConvertTo-SecureString -AsPlainText -Force -String $password)
     Description = "Test user for CI with higher privileges"
     AccountNeverExpires = $true
     PasswordNeverExpires = $true
@@ -51,7 +52,7 @@ $token = $null
 $res = [Win32.Native]::LogonUserW(
     $userParams.Name,
     $env:COMPUTERNAME,
-    $userParams.Password,
+    $password,
     2, # LOGON32_LOGON_INTERACTIVE
     0, # LOGON32_PROVIDER_DEFAULT
     [ref]$token
