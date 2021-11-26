@@ -45,7 +45,7 @@ public static extern bool LogonUserW(
     string lpszPassword,
     int dwLogonType,
     int dwLogonProvider,
-    out Microsoft.Win32.SafeHandles.SafeAccessTokenHandke phToken);
+    out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle phToken);
 '@
 
 $token = $null
