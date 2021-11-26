@@ -57,10 +57,17 @@ end {
         dotnet tool install --global coverlet.console
     }
 
-    $invokeBuildSplat = @{
-        Task = $Task
-        File = (Get-Item ([IO.Path]::Combine($PSScriptRoot, '*.build.ps1'))).FullName
-        Configuration = $Configuration
+    if ($Task -eq 'CISetup') {
+        $cred = [PSCredential]::new($env:PROCESSEX_USER,
+            (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS))
+        ./tools/SetupCIUser.ps1 -Credential $cred
     }
-    Invoke-Build @invokeBuildSplat
+    else {
+        $invokeBuildSplat = @{
+            Task = $Task
+            File = (Get-Item ([IO.Path]::Combine($PSScriptRoot, '*.build.ps1'))).FullName
+            Configuration = $Configuration
+        }
+        Invoke-Build @invokeBuildSplat
+    }
 }

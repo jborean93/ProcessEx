@@ -34,27 +34,7 @@ jobs:
 
     - name: Build module
       shell: pwsh
-      run: |
-        ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
-
-        whoami.exe /all
-
-        Import-Module -Name .\tools\Modules\PSPrivilege
-
-        $userParams = @{
-            Name = $env:PROCESSEX_USER
-            Password = (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS)
-            Description = "Test user for GHA with higher privileges"
-            AccountNeverExpires = $true
-            PasswordNeverExpires = $true
-            UserMayNotChangePassword = $true
-        }
-        $user = New-LocalUser @userParams
-        Add-LocalGroupMember -Group Administrators -Member $user
-        Add-WindowsRight -Name SeAssignPrimaryTokenPrivilege -Account @(
-            $user.SID,
-            ([System.Security.Principal.WindowsIdentity]::GetCurrent().User)
-        )
+      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
 
     - name: Capture PowerShell Module
       uses: actions/upload-artifact@v2
@@ -106,6 +86,10 @@ jobs:
         Get-ChildItem output/*.nupkg | Rename-Item -NewName { $_.Name -replace '.nupkg', '.zip' }
 
         Expand-Archive -Path output/*.zip -DestinationPath $destPath -Force -ErrorAction Stop
+
+    - name: Setup CI user
+      shell: pwsh
+      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task CISetup
 
     - name: Run Tests
       shell: pwsh
