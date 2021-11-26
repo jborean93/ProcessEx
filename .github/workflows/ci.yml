@@ -36,7 +36,10 @@ jobs:
       shell: pwsh
       run: |
         ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
-        Import-Module -Name tools\Modules\PSPrivilege
+
+        whoami.exe /all
+
+        Import-Module -Name .\tools\Modules\PSPrivilege
 
         $userParams = @{
             Name = $env:PROCESSEX_USER
