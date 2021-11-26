@@ -21,8 +21,6 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_NOLOGO: true
   BUILD_CONFIGURATION: ${{ fromJSON('["Debug", "Release"]')[startsWith(github.ref, 'refs/tags/v')] }}
-  PROCESSEX_USER: gha-test
-  PROCESSEX_PASS: Password123!
 
 jobs:
   build:
@@ -87,31 +85,11 @@ jobs:
 
         Expand-Archive -Path output/*.zip -DestinationPath $destPath -Force -ErrorAction Stop
 
-    - name: Setup CI user
-      shell: pwsh
-      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task CISetup
-
     - name: Run Tests
       shell: pwsh
-      run: |
-        Import-Module -Name ./output/ProcessEx
-
-        $cred = [PSCredential]::new("$($env:COMPUTERNAME)\$($env:PROCESSEX_USER)",
-            (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS))
-
-        Add-Type -Namespace Kernel32 -Name Native -MemberDefinition @'
-        [DllImport("Kernel32.dll")]
-        public static extern IntPtr GetStdHandle(int nStdHandle);
-        '@
-
-        $stdout = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Kernel32.Native]::GetStdHandle(-11), $false)
-        $stderr = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Kernel32.Native]::GetStdHandle(-12), $false)
-
-        $si = New-StartupInfo -StandardOutput $stdout -StandardError $stderr
-        Start-ProcessWith whoami.exe /all -Credential $cred -StartupInfo $si -Wait
-
-        & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test
-        exit $LASTEXITCODE
+      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task CITest
+      env:
+        PS_EXECUTABLE: ${{ matrix.info.psversion }}
 
     - name: Upload Test Results
       if: always()

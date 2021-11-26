@@ -57,10 +57,12 @@ end {
         dotnet tool install --global coverlet.console
     }
 
-    if ($Task -eq 'CISetup') {
-        $cred = [PSCredential]::new($env:PROCESSEX_USER,
-            (ConvertTo-SecureString -AsPlainText -Force -String $env:PROCESSEX_PASS))
-        ./tools/SetupCIUser.ps1 -Credential $cred
+    if ($Task -eq 'CITest') {
+        $invokeSubProcessBuildSplat = @{
+            Executable = $env:PS_EXECUTABLE
+            Argument = "./build.ps1 -Configuration $Configuration -Task Test"
+        }
+        ./tools/CITest.ps1 @invokeSubProcessBuildSplat
     }
     else {
         $invokeBuildSplat = @{
