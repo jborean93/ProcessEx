@@ -365,3 +365,4 @@ FodyWeavers.xsd
 output/
 tools/*
 !tools/PesterTest.ps1
+!tools/SetupCIUser.ps1
