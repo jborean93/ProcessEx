@@ -19,6 +19,7 @@ param (
     $Argument
 )
 
+$token = $null
 $password = "Password123!"
 $userParams = @{
     Name = "CITestUser"
@@ -29,12 +30,14 @@ $userParams = @{
     UserMayNotChangePassword = $true
 }
 $user = New-LocalUser @userParams
-Add-LocalGroupMember -Group Administrators -Member $user
-Add-WindowsRight -Name SeAssignPrimaryTokenPrivilege -Account $user.SID
 
-Import-Module -Name ./output/ProcessEx
+try {
+    Add-LocalGroupMember -Group Administrators -Member $user
+    Add-WindowsRight -Name SeAssignPrimaryTokenPrivilege -Account $user.SID
 
-Add-Type -Namespace Win32 -Name Native -MemberDefinition @'
+    Import-Module -Name ./output/ProcessEx
+
+    Add-Type -Namespace Win32 -Name Native -MemberDefinition @'
 [DllImport("Kernel32.dll")]
 public static extern IntPtr GetStdHandle(int nStdHandle);
 
@@ -48,23 +51,21 @@ public static extern bool LogonUserW(
     out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle phToken);
 '@
 
-$token = $null
-$res = [Win32.Native]::LogonUserW(
-    $userParams.Name,
-    $env:COMPUTERNAME,
-    $password,
-    2, # LOGON32_LOGON_INTERACTIVE
-    0, # LOGON32_PROVIDER_DEFAULT
-    [ref]$token
-); $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
-if (-not $res) {
-    $exp = [System.ComponentModel.Win32Exception]::new($err)
-    throw "Failed to log on elevated user: $($exp.Message)"
-}
+    $res = [Win32.Native]::LogonUserW(
+        $userParams.Name,
+        $env:COMPUTERNAME,
+        $password,
+        2, # LOGON32_LOGON_INTERACTIVE
+        0, # LOGON32_PROVIDER_DEFAULT
+        [ref]$token
+    ); $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    if (-not $res) {
+        $exp = [System.ComponentModel.Win32Exception]::new($err)
+        throw "Failed to log on elevated user: $($exp.Message)"
+    }
 
-try {
-    $stdout = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Kernel32.Native]::GetStdHandle(-11), $false)
-    $stderr = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Kernel32.Native]::GetStdHandle(-12), $false)
+    $stdout = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Win32.Native]::GetStdHandle(-11), $false)
+    $stderr = [Microsoft.Win32.SafeHandles.SafeWaitHandle]::new([Win32.Native]::GetStdHandle(-12), $false)
 
     $si = New-StartupInfo -StandardOutput $stdout -StandardError $stderr
     $res = Start-ProcessWith whoami.exe /all -Token $token -StartupInfo $si -Wait -PassThru
@@ -72,6 +73,6 @@ try {
     exit 0 # TODO: Add ExitCode to ProcessInfo
 }
 finally {
-    $token.Dispose()
+    if ($token) { $token.Dispose() }
     $user | Remove-LocalUser
 }
