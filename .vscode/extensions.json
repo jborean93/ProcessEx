@@ -4,6 +4,5 @@
     "recommendations": [
         "ms-dotnettools.csharp",
         "ms-vscode.powershell",
-        "pspester.pester-test",
     ],
 }

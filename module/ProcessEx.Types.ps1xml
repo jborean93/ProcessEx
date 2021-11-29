@@ -1,0 +1,11 @@
+<Types>
+  <Type>
+    <Name>ProcessEx.ProcessInfo</Name>
+    <Members>
+      <AliasProperty>
+        <Name>Id</Name>
+        <ReferencedMemberName>ProcessId</ReferencedMemberName>
+      </AliasProperty>
+    </Members>
+  </Type>
+</Types>

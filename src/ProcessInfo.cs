@@ -62,6 +62,18 @@ namespace ProcessEx
             }
         }
 
+        public int ExitCode
+        {
+            get
+            {
+                int rc = Kernel32.GetExitCodeProcess(Process);
+                if (rc == 0x00000103) // STILL_ACTIVE
+                    throw new InvalidOperationException("The process is still running");
+
+                return rc;
+            }
+        }
+
         private Helpers.PROCESS_BASIC_INFORMATION BasicInfo
         {
             get
