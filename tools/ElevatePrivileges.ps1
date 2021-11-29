@@ -99,7 +99,8 @@ namespace Native
 
         public static SafeEnvironmentBlock CreateEnvironmentBlock(SafeHandle token, bool inherit)
         {
-            if (!NativeCreateEnvironmentBlock(out var block, token, inherit))
+            SafeEnvironmentBlock block;
+            if (!NativeCreateEnvironmentBlock(out block, token, inherit))
                 throw new Win32Exception();
 
             return block;
