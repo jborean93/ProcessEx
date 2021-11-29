@@ -87,9 +87,9 @@ jobs:
 
     - name: Run Tests
       shell: pwsh
-      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task CITest
-      env:
-        PS_EXECUTABLE: ${{ matrix.info.psversion }}
+      run: |
+        & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test -Elevate
+        exit $LASTEXITCODE
 
     - name: Upload Test Results
       if: always()

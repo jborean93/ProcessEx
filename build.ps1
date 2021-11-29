@@ -7,7 +7,11 @@ param(
 
     [Parameter()]
     [string]
-    $Task = 'Build'
+    $Task = 'Build',
+
+    [Parameter()]
+    [Switch]
+    $Elevated
 )
 
 end {
@@ -51,20 +55,33 @@ end {
         Import-Module -Name $targetPath -Force -ErrorAction Stop
     }
 
-    $dotnetTools = @(dotnet tool list --global) -join "`n"
-    if (-not $dotnetTools.Contains('coverlet.console')) {
-        Write-Host 'Installing dotnet tool coverlet.console'
-        dotnet tool install --global coverlet.console
-    }
-
-    if ($Task -eq 'CITest') {
-        $invokeSubProcessBuildSplat = @{
-            Executable = $env:PS_EXECUTABLE
-            Argument = "./build.ps1 -Configuration $Configuration -Task Test"
+    if ($Elevated) {
+        # To avoid the parent runner locking these files on build, copy them to a temporary location.
+        $moduleSource = [IO.Path]::Combine($PSScriptRoot, "output", "ProcessEx")
+        $tempModulePath = [IO.Path]::Combine($PSScriptRoot, "tools", "Modules", "ProcessEx")
+        if ((Test-Path -Path $moduleSource) -and (Test-Path -Path $tempModulePath)) {
+            Remove-Item -Path $tempModulePath -Recurse -Force
         }
-        ./tools/CITest.ps1 @invokeSubProcessBuildSplat
+
+        if (-not (Test-Path $moduleSource)) {
+            throw "Cannot elevate build runner without building project first"
+        }
+        Copy-Item -Path $moduleSource -Destination $tempModulePath -Recurse
+        Import-Module -Name $tempModulePath
+
+        $invokeSubProcessBuildSplat = @{
+            Executable = (Get-Process -Id $pid).Path
+            ArgumentList = "-File", $PSCommandPath, "-Configuration", $Configuration, "-Task", $Task
+        }
+        ./tools/ElevatePrivileges.ps1 @invokeSubProcessBuildSplat
     }
     else {
+        $dotnetTools = @(dotnet tool list --global) -join "`n"
+        if (-not $dotnetTools.Contains('coverlet.console')) {
+            Write-Host 'Installing dotnet tool coverlet.console'
+            dotnet tool install --global coverlet.console
+        }
+
         $invokeBuildSplat = @{
             Task = $Task
             File = (Get-Item ([IO.Path]::Combine($PSScriptRoot, '*.build.ps1'))).FullName

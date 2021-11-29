@@ -21,6 +21,13 @@
             "console": "externalTerminal",
         },
         {
+            "name": "PowerShell Launch Current File",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${file}",
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": ".NET FullCLR Attach",
             "type": "clr",
             "request": "attach",

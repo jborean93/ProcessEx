@@ -56,7 +56,9 @@
     # ScriptsToProcess = @()
 
     # Type files (.ps1xml) to be loaded when importing this module
-    # TypesToProcess = @()
+    TypesToProcess = @(
+        'ProcessEx.Types.ps1xml'
+    )
 
     # Format files (.ps1xml) to be loaded when importing this module
     # FormatsToProcess = @()

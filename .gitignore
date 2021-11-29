@@ -364,5 +364,5 @@ FodyWeavers.xsd
 ### Custom entries ###
 output/
 tools/*
-!tools/CITest.ps1
+!tools/ElevatePrivileges.ps1
 !tools/PesterTest.ps1

@@ -53,6 +53,10 @@ task BuildManaged {
         '--verbosity', 'q'
         '-nologo'
         "-p:Version=$Version"
+        # On a compiler failure a background dotnet process continues to live on keeping the user profile open.
+        # The ElevatePrivileges.ps1 runner requires everything to have finished for it to complete so disabling this
+        # will ensure dotnet doesn't have any lingering child processes.
+        "-p:UseSharedCompilation=false"
     )
     try {
         foreach ($framework in $TargetFrameworks) {
