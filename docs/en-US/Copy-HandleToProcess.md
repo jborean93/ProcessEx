@@ -13,8 +13,8 @@ Copy a handle to the target process.
 ## SYNTAX
 
 ```
-Copy-HandleToProcess [-Process] <ProcessIntString> [[-Access] <Int32>] [-Inherit] [-Handle] <SafeHandle[]>
- [-WhatIf] [-Confirm] [<CommonParameters>]
+Copy-HandleToProcess [-Process] <ProcessIntString> [[-Access] <Int32>] [-Inherit] [-OwnHandle]
+ [-Handle] <SafeHandle[]> [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -28,7 +28,7 @@ This can be used for `New-StartupInfo -InheritedHandle` when the `-ParentProcess
 PS C:\> $parentProcess = Get-Process -Id 6624
 PS C:\> $fs = [IO.File]::Open('C:\file.txt', 'Create', 'Write', 'ReadWrite')
 PS C:\> try {
->>   $newHandle = Copy-HandleToProcess -Handle $fs.SafeFileHandle -Process $parentProcess
+>>   $newHandle = Copy-HandleToProcess -Handle $fs.SafeFileHandle -Process $parentProcess -OwnHandle
 >> }
 >> finally {
 >>   $fs.Dispose()
@@ -44,6 +44,7 @@ PS C:\> try {
 
 Duplicates the file handle opened by the caller to the process specified.
 This duplicated handle is marked to be inherited when creating the new process that has the same parent set as its parent.
+Because the `-OwnHandle` flag is specified when the handle is disposed it will close the handle in the process it was copied to.
 
 ## PARAMETERS
 
@@ -81,7 +82,23 @@ Accept wildcard characters: False
 
 ### -Inherit
 Marks the duplicated handle are inheritable in the target process.
-This means the handle will inherit to and processes created by the target process if inheritbility is set.
+This means the handle will inherit to any processes created by the target process if inheritibility is set when creating the child process.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -OwnHandle
+The handle in the target process will be disposed when the safe handle outputted by this function is disposed in the source process.
+This can be dangerous to use if the target process who uses the handle first disposes of it itself.
 
 ```yaml
 Type: SwitchParameter
@@ -97,8 +114,7 @@ Accept wildcard characters: False
 
 ### -Process
 The process to copy the handle to.
-This can either be a `Process` object, the process identifier, or the process executable.
-The process executable as a string will only work if it finds only 1 process with that name on the host.
+This can either be a `Process` object or the process identifier.
 
 ```yaml
 Type: ProcessIntString
@@ -154,12 +170,13 @@ The handles to copy to the target process.
 ## OUTPUTS
 
 ### ProcessEx.Native.SafeDuplicateHandle
-The duplicated handle that can be used in the target process. It is only valid in that target process but when disposed by the caller it will also close the handle in the target process. Use `$out.DangerousGetHandle()` to get a serialzied representation of the handle to pass to the target process.
+The duplicated handle that can be used in the target process.
+Use `[string]$out.DangerousGetHandle()` to get a serialzied representation of the handle to pass to the target process.
 
 ## NOTES
 
-When the output duplicate handle is disposed by the caller, it is also disposed in the target process.
-Keep this handle alive until the target process has finished using it.
+When using `-OwnHandle` the duplicate handle in the target process is closed when the SafeHandle object disposed by the caller.
+In this scenario keep this handle alive until the target process has finished using it.
 
 ## RELATED LINKS
 

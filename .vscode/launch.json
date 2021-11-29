@@ -8,7 +8,6 @@
             "name": "PowerShell launch",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
             "program": "pwsh",
             "args": [
                 "-NoExit",

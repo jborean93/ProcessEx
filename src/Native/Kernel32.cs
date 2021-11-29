@@ -28,6 +28,21 @@ namespace ProcessEx.Native
         }
 
         [StructLayout(LayoutKind.Sequential)]
+        public struct MEMORY_BASIC_INFORMATION
+        {
+            public IntPtr BaseAddress;
+            public IntPtr AllocationBase;
+            public MemoryProtection AllocationProtect;
+            // This is documented but is only valid for x64. 32-bit processes do not have this field and can safely
+            // be omitted for x64 as it fits into the byte alignment padding anyway.
+            // public UInt16 PartitionId;
+            public IntPtr RegionSize;
+            public MemoryState State;
+            public MemoryProtection Protect;
+            public MemoryType Type;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
         public struct PROCESS_INFORMATION
         {
             public IntPtr hProcess;
@@ -139,6 +154,39 @@ namespace ProcessEx.Native
             JobObjectReserved23Information = 45,
             JobObjectReserved24Information = 46,
             JobObjectReserved25Information = 47,
+        }
+
+        [Flags]
+        public enum MemoryProtection : uint
+        {
+            NONE = 0x00000000,
+            PAGE_NOACCESS = 0x00000001,
+            PAGE_READONLY = 0x00000002,
+            PAGE_READWRITE = 0x00000004,
+            PAGE_WRITECOPY = 0x00000008,
+            PAGE_EXECUTE = 0x00000010,
+            PAGE_EXECUTE_READ = 0x00000020,
+            PAGE_EXECUTE_READWRITE = 0x00000040,
+            PAGE_EXECUTE_WRITECOPY = 0x00000080,
+            PAGE_GUARD = 0x00000100,
+            PAGE_NOCACHE = 0x00000200,
+            PAGE_WRITECOMBINE = 0x00000400,
+            PAGE_TARGETS_INVALID = 0x40000000,
+            PAGE_TARGETS_NO_UPDATE = 0x40000000,
+        }
+
+        public enum MemoryState : uint
+        {
+            MEM_COMMIT = 0x00001000,
+            MEM_RESERVE = 0x00002000,
+            MEM_FREE = 0x00010000,
+        }
+
+        public enum MemoryType : uint
+        {
+            MEM_PRIVATE = 0x00020000,
+            MEM_MAPPED = 0x00040000,
+            MEM_IMAGE = 0x01000000,
         }
 
         public enum ProcessThreadAttribute : uint
@@ -299,14 +347,14 @@ namespace ProcessEx.Native
             Helpers.DuplicateHandleOptions dwOptions);
 
         public static SafeDuplicateHandle DuplicateHandle(SafeHandle sourceProcess, SafeHandle sourceHandle,
-            SafeHandle? targetProcess, UInt32 access, bool inherit, Helpers.DuplicateHandleOptions options)
+            SafeHandle? targetProcess, UInt32 access, bool inherit, Helpers.DuplicateHandleOptions options,
+            bool ownsHandle)
         {
-            bool ownsHandle = true;
             if (targetProcess == null)
             {
                 targetProcess = new SafeNativeHandle(IntPtr.Zero, false);
                 // If closing the duplicate then mark the returned handle so it doesn't try to close itself again.
-                ownsHandle = (options & Helpers.DuplicateHandleOptions.DUPLICATE_CLOSE_SOURCE) != 0;
+                ownsHandle = (options & Helpers.DuplicateHandleOptions.DUPLICATE_CLOSE_SOURCE) == 0;
             }
 
             if (!NativeDuplicateHandle(sourceProcess, sourceHandle, targetProcess, out var dup, access, inherit,
@@ -466,6 +514,19 @@ namespace ProcessEx.Native
             }
         }
 
+        [DllImport("Kernel32.dll", EntryPoint = "IsWow64Process", SetLastError = true)]
+        private static extern bool NativeIsWow64Process(
+            SafeHandle hProcess,
+            out bool Wow64Process);
+
+        public static bool IsWow64Process(SafeHandle process)
+        {
+            if (!NativeIsWow64Process(process, out var isWow64))
+                throw new NativeException("IsWow64Process");
+
+            return isWow64;
+        }
+
         [DllImport("Kernel32.dll", EntryPoint = "OpenProcess", SetLastError = true)]
         private static extern SafeNativeHandle NativeOpenProcess(
             ProcessAccessRights dwDesiredAccess,
@@ -513,10 +574,10 @@ namespace ProcessEx.Native
             IntPtr nSize,
             out IntPtr lpNumberOfBytesRead);
 
-        public static SafeMemoryBuffer ReadProcessMemory(SafeHandle process, IntPtr address, int length)
+        public static SafeMemoryBuffer ReadProcessMemory(SafeHandle process, IntPtr address, IntPtr length)
         {
-            SafeMemoryBuffer buffer = new SafeMemoryBuffer(length);
-            if (!NativeReadProcessMemory(process, address, buffer.DangerousGetHandle(), (IntPtr)length, out var read))
+            SafeMemoryBuffer buffer = new SafeMemoryBuffer((int)length);
+            if (!NativeReadProcessMemory(process, address, buffer.DangerousGetHandle(), length, out var read))
             {
                 buffer.Dispose();
                 throw new NativeException("ReadProcessMemory");
@@ -600,6 +661,22 @@ namespace ProcessEx.Native
             attributeList.AddValue(value);
         }
 
+        [DllImport("Kernel32.dll", EntryPoint = "VirtualQueryEx", SetLastError = true)]
+        private static extern IntPtr NativeVirtualQueryEx(
+            SafeHandle hProcess,
+            IntPtr lpAddress,
+            ref Helpers.MEMORY_BASIC_INFORMATION lpBuffer,
+            IntPtr dwLength);
+
+        public static Helpers.MEMORY_BASIC_INFORMATION VirtualQueryEx(SafeHandle process, IntPtr address)
+        {
+            Helpers.MEMORY_BASIC_INFORMATION mi = new Helpers.MEMORY_BASIC_INFORMATION();
+            if (NativeVirtualQueryEx(process, address, ref mi, (IntPtr)Marshal.SizeOf(mi)) == IntPtr.Zero)
+                throw new NativeException("VirtualQueryEx");
+
+            return mi;
+        }
+
         [DllImport("Kernel32.dll", EntryPoint = "WaitForSingleObject")]
         private static extern Helpers.WaitResult NativeWaitForSingleObject(
             SafeHandle hHandle,
@@ -643,8 +720,10 @@ namespace ProcessEx.Native
         {
             if (_ownsHandle)
             {
-                Kernel32.DuplicateHandle(_process, this, null, 0, false,
-                    Helpers.DuplicateHandleOptions.DUPLICATE_CLOSE_SOURCE);
+                // Cannot pass this as the handle to close as it appears as closed/invalid already. Just wrap it in
+                // a temp SafeHandle that is set not to dispose itself once done.
+                Kernel32.DuplicateHandle(_process, new SafeNativeHandle(handle, false), null, 0, false,
+                    Helpers.DuplicateHandleOptions.DUPLICATE_CLOSE_SOURCE, false);
             }
             return true;
         }

@@ -1,7 +1,6 @@
 using System;
 using System.Management.Automation;
 using System.Management.Automation.Host;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace ProcessEx.Commands
@@ -29,9 +28,9 @@ namespace ProcessEx.Commands
                 Position = new Coordinates(si.dwX, si.dwY),
                 WindowSize = new Size(si.dwXSize, si.dwYSize),
                 CountChars = new Size(si.dwXCountChars, si.dwYCountChars),
-                FillAttribute = (ConsoleFill)si.dwFillAttribute,
-                Flags = (StartupInfoFlags)si.dwFlags,
-                ShowWindow = (WindowStyle)si.wShowWindow,
+                FillAttribute = si.dwFillAttribute,
+                Flags = si.dwFlags,
+                ShowWindow = si.wShowWindow,
                 Reserved = Marshal.PtrToStringUni(si.lpReserved) ?? "",
                 Reserved2 = reserved2,
                 StandardInput = new Native.SafeNativeHandle(si.hStdInput, false),
@@ -104,7 +103,7 @@ namespace ProcessEx.Commands
         public SafeHandle[] InheritedHandle = Array.Empty<SafeHandle>();
 
         [Parameter()]
-        public Process? ParentProcess;
+        public ProcessIntString? ParentProcess;
 
         protected override void ProcessRecord()
         {
@@ -164,7 +163,8 @@ namespace ProcessEx.Commands
                 StandardError = StandardError ?? nullHandle,
                 ConPTY = ConPTY ?? nullHandle,
                 InheritedHandles = InheritedHandle,
-                ParentProcess = ParentProcess,
+                ParentProcess = ParentProcess?.ProcessId ?? 0,
+                ParentProcessHandle = ParentProcess?.ProcessHandle,
             });
         }
     }

@@ -5,7 +5,8 @@
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/dt/ProcessEx.svg)](https://www.powershellgallery.com/packages/ProcessEx)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/jborean93/ProcessEx/blob/main/LICENSE)
 
-TODO: Add in more details
+Interact with the Win32 APIs used to create processes.
+See [about_ProcessEx](docs/en-US/about_ProcessEx.md) for more details.
 
 ## Documentation
 

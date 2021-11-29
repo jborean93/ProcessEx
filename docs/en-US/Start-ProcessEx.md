@@ -126,9 +126,11 @@ Accept wildcard characters: False
 
 ### -CreationFlags
 The process CreationFlags to set when starting the process.
-Defaults to `None` if `-StartupInfo` contains a ConPTY otherwise the default is `CreateNewConsole` to ensure the console application is created in a new console window instead of sharing the existing console.
-You should not set `CreateNewConsole` if a ConPTY is specified as that will have the new process ignore the ConPTY and use the new conhost allocated.
-You cannot set `CreateSuspended` with the `-Wait` parameter.
+Defaults to `None` if `-StartupInfo` contains a ConPTY otherwise the default is `NewConsole` to ensure the console application is created in a new console window instead of sharing the existing console.
+You should not set `NewConsole` if a ConPTY is specified as that will have the new process ignore the ConPTY and use the new conhost allocated.
+You cannot set `Suspended` with the `-Wait` parameter.
+
+A suspended process can be started by calling `[ProcessEx.ProcessRunner]::ResumeThread($proc.Thread)`.
 
 ```yaml
 Type: CreationFlags
@@ -162,6 +164,7 @@ Accept wildcard characters: False
 ### -Environment
 A dictionary containing explicit environment variables to use for the new process.
 These env vars will be used instead of the existing process environment variables if defined.
+Use `Get-TokenEnvironment` to generate a new environment block that can be modified as needed for the new process.
 Cannot be used with `-UseNewEnvironment`.
 
 ```yaml
@@ -296,7 +299,7 @@ Accept wildcard characters: False
 
 ### -Wait
 Wait for the process and any of the processes they may spawn to finish before returning.
-This cannot be set with `-CreationFlags CreateSuspended`.
+This cannot be set with `-CreationFlags Suspended`.
 
 ```yaml
 Type: SwitchParameter
@@ -311,7 +314,7 @@ Accept wildcard characters: False
 ```
 
 ### -WorkingDirectory
-The working directory to set for the new process, defaults to the current process working dir if not defined.
+The working directory to set for the new process, defaults to the current filesystem location of the PowerShell process if not defined.
 
 ```yaml
 Type: String
@@ -338,6 +341,26 @@ No output if `-PassThru` is not specified.
 
 ### ProcessEx.ProcessInfo
 If `-PassThru` is specified the cmdlet will output the `ProcessInfo` of the process. This contains the process and starting thread handle as well as the command invocation details.
+
+This object contains the following properties:
+
+- `Executable` - The executable of the process
+
+- `CommandLine` - The command line used to start the process
+
+- `Process` - The `SafeHandle` of the process created
+
+- `Thread` - The `SafeHandle` of the main thread
+
+- `ProcessId` - Also aliased to `Id`, this is the process identifier
+
+- `ThreadId` - The identifier of the main thread
+
+- `ParentProcessId` - The process identifier of the parent that spawned this process
+
+- `ExitCode` - The exit code of the process, this will not be set if it's still running
+
+- `Environment` - The environment variables of the process
 
 ## NOTES
 

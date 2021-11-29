@@ -1,9 +1,9 @@
 ---
 Module Name: ProcessEx
-Module Guid: {{ Update Module Guid }}
-Download Help Link: {{ Update Download Link }}
-Help Version: {{ Update Help Version }}
-Locale: {{ Update Locale }}
+Module Guid: 95895cae-78d6-43c1-a87b-8450ee234693
+Download Help Link: 
+Help Version: 1.0.0.0
+Locale: en-US
 ---
 
 # ProcessEx Module
@@ -17,11 +17,17 @@ Escape argument for the command line.
 ### [Copy-HandleToProcess](Copy-HandleToProcess.md)
 Copy a handle to the target process.
 
+### [Get-ProcessEnvironment](Get-ProcessEnvironment.md)
+Get the environment variables of a process.
+
 ### [Get-ProcessEx](Get-ProcessEx.md)
 Get info about the process.
 
 ### [Get-StartupInfo](Get-StartupInfo.md)
 Get the startupinfo for the current process.
+
+### [Get-TokenEnvironment](Get-TokenEnvironment.md)
+Get environment block for a user token.
 
 ### [New-ConPTY](New-ConPTY.md)
 Create a new pseudo console object.
