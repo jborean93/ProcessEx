@@ -46,12 +46,86 @@ Use this instead of `Start-ProcessEx` if you wish to start a process as another 
 
 ## EXAMPLES
 
-### Example 1
+### Example 1: Start a powershell with explicit credentials
 ```powershell
-PS C:\> {{ Add example code here }}
+PS C:\> $cred = Get-Credential
+PS C:\> Start-ProcessWith powershell -Credential $cred
 ```
 
-{{ Add example description here }}
+Starts PowerShell with the explicit user defined by the credential.
+This process will be running with an interactive logon
+
+### Example 2: Start process as another user with arguments
+```powershell
+PS C:\> $cred = Get-Credential
+PS C:\> Start-ProcessWith -FilePath pwsh.exe -ArgumentList '-NoProfile', '-Command', 'echo "hi"' -Credential $cred
+```
+
+Starts `pwsh.exe` with command arguments `-NoProfile -Command echo "hi"` as the user specified.
+
+### Example 3: Start process as another user without escaping the command line
+```powershell
+PS C:\> $cred = Get-Credential
+PS C:\> $id = '{e97fa56f-daee-434f-ae00-5fab3d0b054a}'
+PS C:\> $cmd = 'msiexec.exe /x {0} /qn TEST="my prop"' -f $id
+PS C:\> Start-ProcessWith -CommandLine $cmd -Credential $cred
+```
+
+Runs the process with the literal command line value `msiexec.exe /x {e97fa56f-daee-434f-ae00-5fab3d0b054a} /qn TEST="my prop"` as the user specified by the credential.
+If the argument `Test="my prop"` was used with `-ArgumentList` it would be escaped as the literal value `"Test=\"my prop\""`.
+Using the `-CommandLine` parameter will disable any escaping rules and run the raw command exactly as it was passed in.
+
+### Example 4: Start a process with redirected stdout to a file
+```powershell
+PS C:\> $cred = Get-Credential
+PS C:\> $fs = [IO.File]::Open('C:\stdout.txt', 'Create', 'Write', 'ReadWrite')
+PS C:\> try
+..   $si = New-StartupInfo -StandardOutput $fs.SafeFileHandle
+..   Start-ProcessWith -FilePath cmd.exe /c echo hi -StartupInfo $si -Wait -Credential $cred
+.. }
+.. finally {
+..   $fs.Dispose()
+.. }
+```
+
+Runs a process as the user specified with the stdout redirected to the file at `C:\stdout.txt`.
+
+### Example 5: Start a process with a token
+```powershell
+PS C:\> Add-Type -Namespace Advapi32 -Name Methods -MemberDefinition @'
+>> [DllImport("Advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+>> private static extern bool LogonUserW(
+>>     string lpszUsername,
+>>     string lpszDomain,
+>>     string lpszPassword,
+>>     int dwLogonType,
+>>     int dwLogonProvider,
+>>     out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle phToken);
+>>
+>> public static Microsoft.Win32.SafeHandles.SafeAccessTokenHandle LogonUser(
+>>     string username, string domain, string password, int logonType,
+>>     int logonProvider)
+>> {
+>>     Microsoft.Win32.SafeHandles.SafeAccessTokenHandle token;
+>>     if (!LogonUserW(username, domain, password, logonType, logonProvider, out token))
+>>         throw new System.ComponentModel.Win32Exception();
+>>     return token;
+>> }
+>> '@
+PS C:\> $LOGON32_LOGON_BATCH = 4
+PS C:\> $LOGON32_PROVIDER_DEFAULT = 0
+PS C:\> $token = [Advapi32.Methods]::LogonUser("user", "domain", "pass",
+>>   $LOGON32_LOGON_BATCH, $LOGON32_PROVIDER_DEFAULT)
+PS C:\> try {
+>>   Start-ProcessWith powershell -Token $token
+>> }
+>> finally {
+>>   $token.Dispose()
+>> }
+```
+
+Creates a new PowerShell process running under a batch logon of a custom user.
+The token is created using PInvoke by calling `LogonUser`.
 
 ## PARAMETERS
 
@@ -107,9 +181,11 @@ Accept wildcard characters: False
 
 ### -CreationFlags
 The process CreationFlags to set when starting the process.
-Defaults to `CreateNewConsole`, `CreateDefaultErrorMode`, `CreateNewProcessGroup` to ensure the console application is created in a new console window instead of sharing the existing console.
-You cannot set `CreateSuspended` with the `-Wait` parameter.
-It is not possible to omit `CreateNewConsole`, a process spawned by this cmdlet must be done in a new console.
+Defaults to `NewConsole`, `CreateDefaultErrorMode`, `CreateNewProcessGroup` to ensure the console application is created in a new console window instead of sharing the existing console.
+You cannot set `Suspended` with the `-Wait` parameter.
+It is not possible to omit `NewConsole`, a process spawned by this cmdlet must be done in a new console.
+
+A suspended process can be started by calling `[ProcessEx.ProcessRunner]::ResumeThread($proc.Thread)`
 
 ```yaml
 Type: CreationFlags
@@ -128,6 +204,8 @@ Accept wildcard characters: False
 The user credentials to start the new process with.
 This will use the `CreateProcessWithLogon` API which logs on the user as an interactive logon or a NewCredential (network access change) logon when `-NetCredentialsOnly` is specified.
 This API can be called by non-admin accounts as it has no sensitive privilege requirements.
+Because the logon is an interactive logon, UAC restrictions will apply to the new process as it spawns as a limited user token.
+Use the `-Token` parameter after getting the linked token (requires admin rights) to bypass this UAC behaviour.
 
 When `-StartupInfo` specifies a custom station/desktop, the function will add the SID specified by the username to the station and desktop's security descriptor with `AllAccess`.
 When no startup info or Desktop is not set then the current station/desktop is used without any adjustments to their security descriptors.
@@ -147,6 +225,7 @@ Accept wildcard characters: False
 ### -Environment
 A dictionary containing explicit environment variables to use for the new process.
 These env vars will be used instead of the existing process environment variables if defined.
+Use `Get-TokenEnvironment` to generate a new environment block that can be modified as needed for the new process.
 
 ```yaml
 Type: IDictionary
@@ -179,6 +258,7 @@ Accept wildcard characters: False
 ### -NetCredentialsOnly
 The credential or token specified will only be used for any outbound authentication attempts, e.g. SMB file access, AD operations, etc.
 Any local actions will continue to use the callers access token.
+If using `-Credential`, the username must be in the UPN format `username@REALM.COM`.
 
 ```yaml
 Type: SwitchParameter
@@ -227,6 +307,7 @@ Accept wildcard characters: False
 Creates the process to run with the specified access token instead of explicit credentials.
 This access token can be retrieved by using other APIs like `LogonUser` or by duplicating an existing access token of a running process.
 The token should have been opened with `Query`, `Duplicate`, and `AssignPrimary` rights.
+The `AdjustSessionId` and `AdjutDefault` access may also be required if using a token from another session, e.g. a `SYSTEM` token.
 This will use the `CreateProcessWithToken` API which requires the `SeImpersonatePrivilege` privileges usually held by administrators on the host.
 
 Be aware that this process will add the Logon Session SID of this token to the station and desktop security descriptor specified by Desktop on `-StartupInfo`.
@@ -247,7 +328,7 @@ Accept wildcard characters: False
 
 ### -Wait
 Wait for the process and any of the processes they may spawn to finish before returning.
-This cannot be set with `-CreationFlags CreateSuspended`.
+This cannot be set with `-CreationFlags Suspended`.
 
 ```yaml
 Type: SwitchParameter
@@ -277,7 +358,7 @@ Accept wildcard characters: False
 ```
 
 ### -WorkingDirectory
-The working directory to set for the new process, defaults to the current process working dir if not defined.
+The working directory to set for the new process, defaults to the current filesystem location of the PowerShell process if not defined.
 
 ```yaml
 Type: String
@@ -304,6 +385,26 @@ No output if `-PassThru` is not specified.
 
 ### ProcessEx.ProcessInfo
 If `-PassThru` is specified the cmdlet will output the `ProcessInfo` of the process. This contains the process and starting thread handle as well as the command invocation details.
+
+This object contains the following properties:
+
+- `Executable` - The executable of the process
+
+- `CommandLine` - The command line used to start the process
+
+- `Process` - The `SafeHandle` of the process created
+
+- `Thread` - The `SafeHandle` of the main thread
+
+- `ProcessId` - Also aliased to `Id`, this is the process identifier
+
+- `ThreadId` - The identifier of the main thread
+
+- `ParentProcessId` - The process identifier of the parent that spawned this process
+
+- `ExitCode` - The exit code of the process, this will not be set if it's still running
+
+- `Environment` - The environment variables of the process
 
 ## NOTES
 This cmdlet uses the `CreateProcessWithLogon` or `CreateProcessWithToken` APIs which rely on the secondary logon service in Windows.

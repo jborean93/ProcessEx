@@ -2,9 +2,6 @@
 .SYNOPSIS
 Run Pester test
 
-.PARAMETER PesterPath
-The path to the Pester module to run.
-
 .PARAMETER TestPath
 The path to the tests to run
 
@@ -15,16 +12,17 @@ The path to write the Pester test results to.
 param (
     [Parameter(Mandatory)]
     [String]
-    $PesterPath,
-
-    [Parameter(Mandatory)]
-    [String]
     $TestPath,
 
     [Parameter(Mandatory)]
     [String]
     $OutputFile
 )
+
+$requirements = Import-PowerShellDataFile ([IO.Path]::Combine($PSScriptRoot, '..', 'requirements-dev.psd1'))
+foreach ($req in $requirements.GetEnumerator()) {
+    Import-Module -Name ([IO.Path]::Combine($PSScriptRoot, 'Modules', $req.Key))
+}
 
 [PSCustomObject]$PSVersionTable |
     Select-Object -Property *, @{N='Architecture';E={
@@ -36,8 +34,6 @@ param (
     }} |
     Format-List |
     Out-Host
-
-Import-Module -Name $PesterPath -Force
 
 $configuration = [PesterConfiguration]::Default
 $configuration.Output.Verbosity = 'Detailed'

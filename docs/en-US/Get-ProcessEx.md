@@ -64,8 +64,7 @@ Accept wildcard characters: False
 
 ### -Process
 The process to open.
-This can either be a `Process` object, the process identifier, or the process executable.
-The process executable as a string will only work if it finds only 1 process with that name on the host.
+This can either be a `Process` object or the process identifier.
 
 ```yaml
 Type: ProcessIntString[]
@@ -90,7 +89,25 @@ The `Process` object, process id, or name.
 ## OUTPUTS
 
 ### ProcessEx.ProcessInfo
-The `ProcessInfo` of the opened process. This contains properties like the process handle and command line invocation. The `Thread` and `ThreadId` properties will not be set and should not be used with the output of this cmdlet.
+The `ProcessInfo` of the opened process. This contains properties like the process handle and command line invocation. The `Thread` and `ThreadId` properties will not be set and should not be used with the output of this cmdlet. This object contains the following properties:
+
+- `Executable` - The executable of the process
+
+- `CommandLine` - The command line used to start the process
+
+- `Process` - The `SafeHandle` of the process retrieved
+
+- `Thread` - This is not set in the output from `Get-ProcessEx` and should be ignored
+
+- `ProcessId` - Also aliased to `Id`, this is the process identifier
+
+- `ThreadId` - This is not set in the output from `Get-ProcessEx` and should be ignored
+
+- `ParentProcessId` - The process identifier of the parent that spawned this process
+
+- `ExitCode` - The exit code of the process, this will not be set if it's still running
+
+- `Environment` - The environment variables of the process
 
 ## NOTES
 

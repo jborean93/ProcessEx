@@ -73,8 +73,10 @@
     CmdletsToExport = @(
         'ConvertTo-EscapedArgument'
         'Copy-HandleToProcess'
+        'Get-ProcessEnvironment'
         'Get-ProcessEx'
         'Get-StartupInfo'
+        'Get-TokenEnvironment'
         'New-ConPTY'
         'New-StartupInfo'
         'Resize-ConPTY'

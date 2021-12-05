@@ -150,7 +150,6 @@ task DoTest {
             '-ExecutionPolicy', 'Bypass'
         }
         '-File', ('"{0}"' -f $pesterScript)
-        '-PesterPath', ('"{0}"' -f [IO.Path]::Combine($PSScriptRoot, 'tools', 'Modules', 'Pester'))
         '-TestPath', ('"{0}"' -f [IO.Path]::Combine($PSScriptRoot, 'tests'))
         '-OutputFile', ('"{0}"' -f $resultsFile)
     )
@@ -187,32 +186,11 @@ task DoInstall {
     Copy-Item -Path ([IO.Path]::Combine($ReleasePath, '*')) -Destination $installPath -Force -Recurse
 }
 
-<#
-task DoPublish {
-    if ($env:GALLERY_API_KEY) {
-        $apiKey = $env:GALLERY_API_KEY
-    } else {
-        $userProfile = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
-        if (Test-Path $userProfile/.PSGallery/apikey.xml) {
-            $apiKey = (Import-Clixml $userProfile/.PSGallery/apikey.xml).GetNetworkCredential().Password
-        }
-    }
-
-    if (-not $apiKey) {
-        throw 'Could not find PSGallery API key!'
-    }
-
-    Publish-Module -Name $ReleasePath -NuGetApiKey $apiKey -AllowPrerelease -Force:$Force.IsPresent
-}
-#>
-
 task Build -Jobs Clean, BuildManaged, CopyToRelease, BuildDocs, Package
 
 # FIXME: Work out why we need the obj and bin folder for coverage to work
 task Test -Jobs BuildManaged, Analyze, DoTest
 
 task Install -Jobs DoInstall
-
-#task Publish -Jobs Test, DoPublish
 
 task . Build

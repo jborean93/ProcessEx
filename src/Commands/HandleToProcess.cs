@@ -1,5 +1,6 @@
+using ProcessEx.Native;
+using ProcessEx.Security;
 using System;
-using System.Diagnostics;
 using System.Management.Automation;
 using System.Runtime.InteropServices;
 
@@ -9,7 +10,7 @@ namespace ProcessEx.Commands
         VerbsCommon.Copy, "HandleToProcess",
         SupportsShouldProcess = true
     )]
-    [OutputType(typeof(Native.SafeDuplicateHandle))]
+    [OutputType(typeof(SafeHandle))]
     public class CopyHandleToProcess : PSCmdlet
     {
         [Parameter(
@@ -36,41 +37,39 @@ namespace ProcessEx.Commands
         [Parameter()]
         public SwitchParameter Inherit { get; set; }
 
+        [Parameter()]
+        public SwitchParameter OwnHandle { get; set; }
+
         protected override void ProcessRecord()
         {
-            Debug.Assert(Process != null);
-            Process targetProcess = Process.Value;
-
-            Native.Helpers.DuplicateHandleOptions options = Native.Helpers.DuplicateHandleOptions.NONE;
+            Helpers.DuplicateHandleOptions options = Helpers.DuplicateHandleOptions.NONE;
             if (Access == 0)
-                options |= Native.Helpers.DuplicateHandleOptions.DUPLICATE_SAME_ACCESS;
+                options |= Helpers.DuplicateHandleOptions.DUPLICATE_SAME_ACCESS;
 
-            Native.SafeNativeHandle proc;
+            SafeHandle proc;
             try
             {
-                proc = Native.Kernel32.OpenProcess(targetProcess.Id,
-                    Security.ProcessAccessRights.DupHandle, false);
+                proc = Process.ProcessHandle ?? Kernel32.OpenProcess(Process.ProcessId,
+                    ProcessAccessRights.DupHandle, false);
             }
             catch (NativeException e)
             {
                 WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to open process to duplicate handle",
-                    targetProcess.Id));
+                    Process.ProcessId));
                 return;
             }
 
-            using (Native.SafeNativeHandle currentProc = Native.Kernel32.GetCurrentProcess())
-            using (proc)
+            using SafeHandle currentProc = Kernel32.GetCurrentProcess();
+            foreach (SafeHandle h in Handle)
             {
-                foreach (SafeHandle h in Handle)
+                try
                 {
-                    try
-                    {
-                        Native.Kernel32.DuplicateHandle(currentProc, h, proc, (UInt32)Access, Inherit, options);
-                    }
-                    catch (NativeException e)
-                    {
-                        WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to duplicate handle", targetProcess.Id));
-                    }
+                    WriteObject(Kernel32.DuplicateHandle(currentProc, h, proc, (UInt32)Access, Inherit, options,
+                        OwnHandle));
+                }
+                catch (NativeException e)
+                {
+                    WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to duplicate handle", Process.ProcessId));
                 }
             }
         }

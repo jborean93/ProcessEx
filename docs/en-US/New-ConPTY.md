@@ -34,11 +34,36 @@ PS C:\> $conPTYParams = @{
 >>   InputPipe = $inputStream.SafeFileHandle
 >>   OutputPipe = $outputStream.SafeFileHandle
 >> }
-PS C:\> $conPTY = New-ConPty @conPtyParams
+PS C:\> $conPTY = New-ConPty @conPTYParams
 PS C:\> $conPTY.Dispose()  # Should be disposed when finished.
 ```
 
 Create a ConPTY that will pipe data from `C:\temp\input` into the ConPTY and write data from the ConPTY to `C:\temp\output`.
+
+### Example 2: Create ConPTY backed by anonymous pipes
+```powershell
+PS C:\> $inputPipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("Out", "Inheritable")
+PS C:\> $outputPipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("In", "Inheritable")
+PS C:\> $conPTYParams = @{
+>>   Width = 80
+>>   Height = 60
+>>   InputPipe = $inputPipe.ClientSafePipeHandle
+>>   OutputPipe = $outputPipe.ClientSafePipeHandle
+>> }
+PS C:\> $pty = New-ConPTY @conPTYParams
+PS C:\> try {
+>>   $inputPipe.ClientSafePipeHandle.Dispose()
+>>   $outputPipe.ClientSafePipeHandle.Dispose()
+>>   $si = New-StartupInfo -ConPTY $pty
+>>   $proc = Start-ProcessEx powershell -StartupInfo $si -PassThru
+>> }
+>> finally {
+>>   $pty.Dispose()
+>> }
+```
+
+Create a ConPTY that will transmit data to and from an anonymous pipe created by the caller.
+The caller can then read and write data on the server ends of the pipe to communicate with the child process.
 
 ## PARAMETERS
 

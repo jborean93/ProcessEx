@@ -35,21 +35,22 @@ namespace ProcessEx.Commands
 
         protected override void ProcessRecord()
         {
+            SafeHandle threadHandle = Helpers.NULL_HANDLE_VALUE; // We cannot get the main TID after creation.
+
             foreach (ProcessIntString proc in Process)
             {
                 SafeHandle processHandle;
                 try
                 {
-                    processHandle = Kernel32.OpenProcess(proc.Value.Id, Access, Inherit);
+                    processHandle = proc.ProcessHandle ?? Kernel32.OpenProcess(proc.ProcessId, Access, Inherit);
                 }
                 catch (NativeException e)
                 {
-                    WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to open process handle", proc.Value.Id));
+                    WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to open process handle", proc.ProcessId));
                     continue;
                 }
 
-                SafeHandle threadHandle = Helpers.NULL_HANDLE_VALUE; // We cannot get the main TID after creation.
-                WriteObject(new ProcessInfo(processHandle, threadHandle, proc.Value.Id, 0));
+                WriteObject(new ProcessInfo(processHandle, threadHandle, proc.ProcessId, 0));
             }
         }
     }
@@ -122,11 +123,22 @@ namespace ProcessEx.Commands
         {
             if (ParameterSetName == "FilePath")
             {
-                ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath);
+                try
+                {
+                    ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath);
+                }
+                catch (NullReferenceException) // No documentation on this exception.
+                {
+                    ApplicationName = FilePath;
+                }
+
                 List<string> commands = new List<string>() { ApplicationName };
                 commands.AddRange(ArgumentList);
                 CommandLine = String.Join(" ", commands.Select(a => ArgumentHelper.EscapeArgument(a)));
             }
+
+            if (String.IsNullOrWhiteSpace(WorkingDirectory))
+                WorkingDirectory = SessionState.Path.CurrentFileSystemLocation.Path;
 
             if (StartupInfo == null)
                 StartupInfo = new StartupInfo();
@@ -173,16 +185,24 @@ namespace ProcessEx.Commands
             })));
 
             ProcessInfo info;
-            if (Token != null)
+            try
             {
-                info = ProcessRunner.CreateProcessAsUser(Token, ApplicationName, CommandLine, ProcessAttribute,
-                    ThreadAttribute, DisableInheritance, CreationFlags, Environment, WorkingDirectory, StartupInfo!,
-                    UseNewEnvironment);
+                if (Token != null)
+                {
+                    info = ProcessRunner.CreateProcessAsUser(Token, ApplicationName, CommandLine, ProcessAttribute,
+                        ThreadAttribute, !DisableInheritance, CreationFlags, Environment, WorkingDirectory, StartupInfo!,
+                        UseNewEnvironment);
+                }
+                else
+                {
+                    info = ProcessRunner.CreateProcess(ApplicationName, CommandLine, ProcessAttribute, ThreadAttribute,
+                        !DisableInheritance, CreationFlags, Environment, WorkingDirectory, StartupInfo!, UseNewEnvironment);
+                }
             }
-            else
+            catch (NativeException e)
             {
-                info = ProcessRunner.CreateProcess(ApplicationName, CommandLine, ProcessAttribute, ThreadAttribute,
-                    DisableInheritance, CreationFlags, Environment, WorkingDirectory, StartupInfo!, UseNewEnvironment);
+                WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to create process"));
+                return;
             }
 
             WriteVerbose($"Process created with PID {info.ProcessId} and TID {info.ThreadId}");
@@ -194,7 +214,7 @@ namespace ProcessEx.Commands
             else if (!suspended)
             {
                 WriteVerbose("Resuming process");
-                Kernel32.ResumeThread(info.Thread);
+                ProcessRunner.ResumeThread(info.Thread);
             }
 
             if (PassThru)

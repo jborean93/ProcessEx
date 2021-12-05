@@ -17,7 +17,7 @@ Create a StartupInfo object for creating a process.
 New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
  [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
  [-Reserved <String>] [-Reserved2 <Byte[]>] [-StandardInput <SafeHandle>] [-StandardOutput <SafeHandle>]
- [-StandardError <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-ParentProcess <Process>]
+ [-StandardError <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-ParentProcess <ProcessIntString>]
  [<CommonParameters>]
 ```
 
@@ -26,7 +26,7 @@ New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] 
 New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
  [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
  [-Reserved <String>] [-Reserved2 <Byte[]>] [-ConPTY <SafeHandle>] [-InheritedHandle <SafeHandle[]>]
- [-ParentProcess <Process>] [<CommonParameters>]
+ [-ParentProcess <ProcessIntString>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -34,12 +34,63 @@ Create the StartupInfo object that defines the low level details used to create 
 
 ## EXAMPLES
 
-### Example 1
+### Example 1: Start process with custom title
 ```powershell
-PS C:\> {{ Add example code here }}
+PS C:\> $si = New-StartupInfo -Title "My Application"
+PS C:\> Start-ProcessEx my_app.exe -StartupInfo $si
 ```
 
-FIXME
+Starts a new process with a custom title in the console window.
+
+### Example 2: Create StartupInfo with ConPTY
+```powershell
+PS C:\> $inputStream = [IO.FileStream]::Open('C:\temp\input', 'Open',
+>>   'Read', 'ReadWrite')
+PS C:\> $outputStream = [IO.FileStream]::Open('C:\temp\output', 'Create',
+>>   'Write', 'ReadWrite')
+PS C:\> $conPTYParams = @{
+>>   Width = 80
+>>   Height = 60
+>>   InputPipe = $inputStream.SafeFileHandle
+>>   OutputPipe = $outputStream.SafeFileHandle
+>> }
+PS C:\> $conPTY = New-ConPty @conPtyParams
+PS C:\> try {
+>>   $si = New-StartupInfo -ConPTY $conPTY
+>>   Start-ProcessEx cmd.exe -StartupInfo $si -Wait
+>> }
+>> finally {
+>>   $conPTY.Dispose()
+>> }
+```
+
+Create a ConPTY that will pipe data from `C:\temp\input` into the ConPTY and write data from the ConPTY to `C:\temp\output`.
+
+### Example 3: Create StartupInfo with custom parent process
+```powershell
+PS C:\> $parentProc = Get-Process -Id 1535
+PS C:\> $pipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("In", "None")
+PS C:\> $dupParams = @{
+>>   Handle = $pipe.ClientSafePipeHandle
+>>   Process = $parentProc
+>>   Inherit = $true
+>>   OwnHandle = $true
+>> }
+PS C:\> $dupPipe = Copy-HandleToProcess @dupParams
+PS C:\> $pipe.DisposeLocalCopyOfClientHandle()
+PS C:\> try {
+>>   $si = New-StartupInfo -InheritedHandle $dupPIpe -ParentProcess $parentProc
+>>   Start-ProcessEx powershell '-File' 'my_script.ps1' -StartupInfo $si
+>> }
+>> finally {
+>>   # Can close $dupPipe in $parentProc once the process has started
+>>   $dupPipe.Dispose()
+>> }
+```
+
+Creates a `StartupInfo` with a parent process and explicit handles to implement from this parent process.
+These handles must exist in the parent process specified rather than the current process and must also be marked as inheritable.
+To copy a handle in the current process to the new parent process, use `Copy-HandleToProcess`.
 
 ## PARAMETERS
 
@@ -80,6 +131,7 @@ Accept wildcard characters: False
 ### -Desktop
 The name of the Windows Desktop or both the Windows Desktop and Station (`station\desktop`) for the new process.
 If not set then it defaults to the current station and desktop.
+Spawning a process on another station is not thread safe as the process of granting rights to the user must swap the current process station to the target one to access the desktop specified.
 
 ```yaml
 Type: String
@@ -129,7 +181,8 @@ A list of handles to explicit allow the new process to inherit from.
 If omitted then the child will inherit all the parent process' handles that were opened with inheritability if the process was created with inheritability.
 When `-ParentProcess` is not set, all these handles will be changed to an inheritable handle in the current process.
 When `-ParentProcess` is set then these handles need to be a valid handle in the parent process itself.
-Use `Copy-HandleToProcess` to open them in the parent process.
+Use `Copy-HandleToProcess` with `-Inherit` and `-OwnHandle` to open them in the parent process for it to be a valid handle for inheritance by the new process.
+Not having an inherited handle in the parent process will cause a failure when trying to start the process.
 This will not work with `Start-ProcessWith` due to the restrictions in the underlying APIs it calls.
 
 ```yaml
@@ -150,7 +203,7 @@ If the parent process is running under a different user or a different elevation
 This will not work with `Start-ProcessWith` due to the restrictions in the underlying APIs it calls.
 
 ```yaml
-Type: Process
+Type: ProcessIntString
 Parameter Sets: (All)
 Aliases:
 

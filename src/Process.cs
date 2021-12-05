@@ -17,11 +17,40 @@ namespace ProcessEx
 {
     public sealed class ProcessIntString
     {
-        internal Process Value { get; set; }
+        internal int ProcessId { get; set; }
+        internal SafeHandle? ProcessHandle { get; set; }
 
-        public ProcessIntString(Process process) => Value = process;
+        public ProcessIntString(int pid) => ProcessId = pid;
 
-        public ProcessIntString(int pid) => Value = Process.GetProcessById(pid);
+        public ProcessIntString(Process process)
+        {
+            ProcessId = process.Id;
+
+            if (IsAllAccessHandle(process.SafeHandle))
+                ProcessHandle = process.SafeHandle;
+        }
+
+        public ProcessIntString(ProcessInfo process)
+        {
+            ProcessId = process.ProcessId;
+
+            if (IsAllAccessHandle(process.Process))
+                ProcessHandle = process.Process;
+        }
+
+        private bool IsAllAccessHandle(SafeHandle? handle)
+        {
+            if (handle?.IsInvalid != false && handle?.IsClosed != false)
+                return false;
+            else if (handle.DangerousGetHandle() == (IntPtr)(-1))
+                return true; // Psuedo handle with ALL_ACCESS rights
+
+            using SafeMemoryBuffer buffer = Ntdll.NtQueryObject(handle,
+                Helpers.OBJECT_INFORMATION_CLASS.ObjectBasicInformation);
+            var bi = Marshal.PtrToStructure<Helpers.PUBLIC_OBJECT_BASIC_INFORMATION>(buffer.DangerousGetHandle());
+
+            return (bi.AccessMask & (uint)ProcessAccessRights.AllAccess) != 0;
+        }
     }
 
     public class StartupInfo
@@ -33,7 +62,7 @@ namespace ProcessEx
         public Size? CountChars { get; set; }
         public ConsoleFill FillAttribute { get; set; }
         public StartupInfoFlags Flags { get; set; }
-        public WindowStyle ShowWindow { get; set; }
+        public WindowStyle ShowWindow { get; set; } = WindowStyle.ShowDefault;
         public string Reserved { get; set; } = "";
         public byte[] Reserved2 { get; set; } = Array.Empty<byte>();
         public SafeHandle StandardInput { get; set; } = Helpers.NULL_HANDLE_VALUE;
@@ -43,7 +72,13 @@ namespace ProcessEx
         // ProcThreadAttributes
         public SafeHandle ConPTY { get; set; } = Helpers.NULL_HANDLE_VALUE;
         public SafeHandle[] InheritedHandles { get; set; } = Array.Empty<SafeHandle>();
-        public Process? ParentProcess { get; set; }
+        public int ParentProcess { get; set; } = 0;
+        internal SafeHandle? ParentProcessHandle { get; set; }
+
+        internal SafeHandle OpenParentProcessHandle(ProcessAccessRights access)
+        {
+            return ParentProcessHandle ?? Kernel32.OpenProcess(ParentProcess, access, false);
+        }
     }
 
     [Flags]
@@ -420,6 +455,10 @@ namespace ProcessEx
                     else
                         access = ProcessAccessRights.AllAccess;
                 }
+                else if (commandName == "New-StartupInfo")
+                {
+                    access |= ProcessAccessRights.CreateProcess;
+                }
 
                 try
                 {
@@ -471,14 +510,19 @@ namespace ProcessEx
         }
     }
 
-    internal static class ProcessRunner
+    public static class ProcessRunner
     {
+        public static void ResumeThread(SafeHandle thread)
+        {
+            Kernel32.ResumeThread(thread);
+        }
+
         private delegate ProcessInfo CreateProcessDelegate(string? applicationName, string? commandLine,
             SafeHandle processAttributes, SafeHandle threadAttributes, bool inheritHandles,
             CreationFlags creationflags, SafeHandle environment, string? currentDirectory,
             Helpers.STARTUPINFOEX startupInfo, Dictionary<string, object?> ext);
 
-        public static ProcessInfo CreateProcess(string? applicationName, string? commandLine,
+        internal static ProcessInfo CreateProcess(string? applicationName, string? commandLine,
             SecurityAttributes? processAttributes, SecurityAttributes? threadAttributes, bool inheritHandles,
             CreationFlags creationFlags, IDictionary? environment, string? currentDirectory, StartupInfo startupInfo,
             bool newEnvironment)
@@ -500,7 +544,7 @@ namespace ProcessEx
                 inheritHandles, creationflags, environment, currentDirectory, startupInfo);
         }
 
-        public static ProcessInfo CreateProcessAsUser(SafeHandle token, string? applicationName, string? commandLine,
+        internal static ProcessInfo CreateProcessAsUser(SafeHandle token, string? applicationName, string? commandLine,
             SecurityAttributes? processAttributes, SecurityAttributes? threadAttributes, bool inheritHandles,
             CreationFlags creationFlags, IDictionary? environment, string? currentDirectory, StartupInfo startupInfo,
             bool newEnvironment)
@@ -528,7 +572,7 @@ namespace ProcessEx
                 threadAttributes, inheritHandles, creationflags, environment, currentDirectory, startupInfo);
         }
 
-        public static ProcessInfo CreateProcessWithLogon(string username, string? domain, SecureString password,
+        internal static ProcessInfo CreateProcessWithLogon(string username, string? domain, SecureString password,
             Helpers.LogonFlags logonFlags, string? applicationName, string? commandLine, CreationFlags creationFlags,
             IDictionary? environment, string? currentDirectory, StartupInfo startupInfo)
         {
@@ -565,8 +609,9 @@ namespace ProcessEx
             {
                 // We don't know the logon session SID as the function will create that so just use the account SID
                 // on the new Station/Desktop ACE.
-                // FIXME: Combine domain with username if set.
-                SecurityIdentifier targetAccount = (SecurityIdentifier)new NTAccount(username).Translate(
+                NTAccount account = String.IsNullOrWhiteSpace(domain)
+                    ? new NTAccount(username) : new NTAccount(domain, username);
+                SecurityIdentifier targetAccount = (SecurityIdentifier)account.Translate(
                     typeof(SecurityIdentifier));
 
                 GrantStationDesktopAccess(targetAccount, startupInfo.startupInfo.lpDesktop);
@@ -585,7 +630,7 @@ namespace ProcessEx
             }
         }
 
-        public static ProcessInfo CreateProcessWithToken(SafeHandle token, Helpers.LogonFlags logonFlags,
+        internal static ProcessInfo CreateProcessWithToken(SafeHandle token, Helpers.LogonFlags logonFlags,
             string? applicationName, string? commandLine, CreationFlags creationFlags, IDictionary? environment,
             string? currentDirectory, StartupInfo startupInfo)
         {
@@ -662,7 +707,7 @@ namespace ProcessEx
                 si.startupInfo.dwFlags |= StartupInfoFlags.UseFillAttribute;
             }
 
-            if (startupInfo.ShowWindow != 0)
+            if (startupInfo.ShowWindow != WindowStyle.ShowDefault)
             {
                 si.startupInfo.wShowWindow = startupInfo.ShowWindow;
                 si.startupInfo.dwFlags |= StartupInfoFlags.UseShowWindow;
@@ -672,9 +717,9 @@ namespace ProcessEx
             using var desktop = CreateStringBuffer(startupInfo.Desktop);
             using var title = CreateStringBuffer(startupInfo.Title);
             using var lpReserved2 = CreateMemoryBuffer(startupInfo.Reserved2);
-            using var stdin = PrepareStdioHandle(startupInfo.StandardInput, startupInfo.ParentProcess);
-            using var stdout = PrepareStdioHandle(startupInfo.StandardOutput, startupInfo.ParentProcess);
-            using var stderr = PrepareStdioHandle(startupInfo.StandardError, startupInfo.ParentProcess);
+            using var stdin = PrepareStdioHandle(startupInfo.StandardInput, startupInfo);
+            using var stdout = PrepareStdioHandle(startupInfo.StandardOutput, startupInfo);
+            using var stderr = PrepareStdioHandle(startupInfo.StandardError, startupInfo);
             using var procThreadAttr = CreateProcThreadAttributes(startupInfo, stdin, stdout, stderr);
             using var processAttr = CreateSecurityAttributes(processAttributes);
             using var threadAttr = CreateSecurityAttributes(threadAttributes);
@@ -749,6 +794,32 @@ namespace ProcessEx
             } while (completionCode != 4);
         }
 
+        internal static Dictionary<string, string> ConvertEnvironmentBlock(SafeHandle block)
+        {
+            // Env vars are case insensitive on Windows.
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            Dictionary<string, string> env = new Dictionary<string, string>(comparer);
+
+            IntPtr ptr = block.DangerousGetHandle();
+            while (true)
+            {
+                string? entry = Marshal.PtrToStringUni(ptr);
+                if (String.IsNullOrEmpty(entry))
+                    break;
+
+                ptr = IntPtr.Add(ptr, (entry.Length * 2) + 2);
+                // Windows stores the drive scoped working directory under the env var =<drive>:=<path>, these aren't
+                // actual env vars so they are skipped.
+                if (entry.StartsWith("="))
+                    continue; // Unsure why this appears but it isn't valid
+
+                string[] valueSplit = entry.Split(new char[1] { '=' }, 2);
+                env[valueSplit[0]] = valueSplit[1];
+            }
+
+            return env;
+        }
+
         private static SafeHandle CreateEnvironmentPointer(IDictionary? environment, bool newEnvironment,
             SafeHandle? userToken)
         {
@@ -791,7 +862,7 @@ namespace ProcessEx
             SafeHandle stdout, SafeHandle stderr)
         {
             int count = 0;
-            if (startupInfo.ParentProcess != null)
+            if (startupInfo.ParentProcess != 0)
                 count++;
 
             if (startupInfo.InheritedHandles.Length > 0)
@@ -806,9 +877,9 @@ namespace ProcessEx
             SafeProcThreadAttribute attr = Kernel32.InitializeProcThreadAttributeList(count);
             try
             {
-                if (startupInfo.ParentProcess != null)
+                if (startupInfo.ParentProcess != 0)
                 {
-                    SafeNativeHandle parentProcess = Kernel32.OpenProcess(startupInfo.ParentProcess.Id,
+                    SafeNativeHandle parentProcess = Kernel32.OpenProcess(startupInfo.ParentProcess,
                         ProcessAccessRights.CreateProcess, false);
                     attr.AddValue(parentProcess);
 
@@ -835,7 +906,10 @@ namespace ProcessEx
                     foreach (SafeHandle handle in startupInfo.InheritedHandles)
                     {
                         const Helpers.HandleFlags flags = Helpers.HandleFlags.HANDLE_FLAG_INHERIT;
-                        if (startupInfo.ParentProcess == null)
+
+                        // Can only mark them as inherited if the handle is for the current process. If a handle isn't
+                        // inheritable then the CreateProcess call will fail with invalid parameter.
+                        if (startupInfo.ParentProcess == 0)
                             Kernel32.SetHandleInformation(handle, flags, flags);
 
                         handles.Add(handle.DangerousGetHandle());
@@ -940,7 +1014,7 @@ namespace ProcessEx
             {
                  return GetTokenLogonSid(token);
             }
-            catch (NativeException e) when (e.NativeErrorCode != (int)Win32ErrorCode.ERROR_NOT_FOUND)
+            catch (NativeException e) when (e.NativeErrorCode == (int)Win32ErrorCode.ERROR_NOT_FOUND)
             {
                 // Running as SYSTEM will have no LogonSID so just use the user SID as a backup.
                 return GetTokenUser(token);
@@ -1045,19 +1119,18 @@ namespace ProcessEx
             }
         }
 
-        private static SafeHandle PrepareStdioHandle(SafeHandle handle, Process? targetProcess)
+        private static SafeHandle PrepareStdioHandle(SafeHandle handle, StartupInfo startupInfo)
         {
             if (handle.DangerousGetHandle() == IntPtr.Zero)
                 return Helpers.NULL_HANDLE_VALUE;
 
-            if (targetProcess != null)
+            if (startupInfo.ParentProcess != 0)
             {
                 // We need to duplicate the handle into the new parent process so it can be inherited.
                 SafeHandle currentProcess = Kernel32.GetCurrentProcess();
-                using SafeNativeHandle target = Kernel32.OpenProcess(targetProcess.Id, ProcessAccessRights.DupHandle,
-                    false);
+                SafeHandle target = startupInfo.OpenParentProcessHandle(ProcessAccessRights.DupHandle);
                 return Kernel32.DuplicateHandle(currentProcess, handle, target, 0, true,
-                    Helpers.DuplicateHandleOptions.DUPLICATE_SAME_ACCESS);
+                    Helpers.DuplicateHandleOptions.DUPLICATE_SAME_ACCESS, true);
             }
             else
             {

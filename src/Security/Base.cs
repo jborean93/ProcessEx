@@ -5,7 +5,7 @@ using System.Security.Principal;
 
 namespace ProcessEx.Security
 {
-    public abstract class SecurityAttributes
+    public class SecurityAttributes
     {
         public bool InheritHandle { get; set; }
         public NativeObjectSecurity? SecurityDescriptor { get; set; }

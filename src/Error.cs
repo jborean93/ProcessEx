@@ -8,6 +8,8 @@ namespace ProcessEx
     internal enum Win32ErrorCode : int
     {
         ERROR_SUCCESS = 0x00000000,
+        ERROR_FILE_NOT_FOUND = 0x00000002,
+        ERROR_PATH_NOT_FOUND = 0x00000003,
         ERROR_ACCESS_DENIED = 0x00000005,
         ERROR_INVALID_HANDLE = 0x00000006,
         ERROR_INVALID_DATA = 0x0000000D,
@@ -25,13 +27,14 @@ namespace ProcessEx
         public string Function { get; }
 
         public NativeException(string function) : this(function, Marshal.GetLastWin32Error()) { }
+
         public NativeException(string function, int errorCode) : base(errorCode)
         {
             Function = function;
         }
     }
 
-    internal class ErrorHelper
+    internal static class ErrorHelper
     {
         public static ErrorRecord GenerateWin32Error(NativeException exception, string message,
             object? targetObject = null)
@@ -49,6 +52,11 @@ namespace ProcessEx
             ErrorCategory category = ErrorCategory.NotSpecified;
             switch (exception.NativeErrorCode)
             {
+                case (int)Win32ErrorCode.ERROR_FILE_NOT_FOUND:
+                case (int)Win32ErrorCode.ERROR_PATH_NOT_FOUND:
+                    category = ErrorCategory.ObjectNotFound;
+                    break;
+
                 case (int)Win32ErrorCode.ERROR_ACCESS_DENIED:
                 case (int)Win32ErrorCode.ERROR_CANT_OPEN_ANONYMOUS:
                     category = ErrorCategory.PermissionDenied;

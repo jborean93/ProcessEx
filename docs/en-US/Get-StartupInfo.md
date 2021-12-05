@@ -40,7 +40,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### ProcessEx.StartupInfo
-The `StartupInfo` value for the current process. Any of the extended thread attribute values, like `ParentProcess`, `ConPTY`, and `InheritedHandle` will not be set as they are used only for creating new processes.
+The `StartupInfo` value for the current process.
+Any of the extended thread attribute values, like `ParentProcess`, `ConPTY`, and `InheritedHandle` will not be set as they are used only for creating new processes.
 
 ## NOTES
 

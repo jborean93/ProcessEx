@@ -2,10 +2,10 @@ using ProcessEx.Native;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Management.Automation;
 using System.Runtime.InteropServices;
+using System.Security;
 
 namespace ProcessEx.Commands
 {
@@ -65,7 +65,7 @@ namespace ProcessEx.Commands
             ParameterSetName = "CommandLineCredential"
         )]
         [ValidateNotNull]
-        public PSCredential? Credential { get; set; }
+        public PSCredential Credential { get; set; } = new PSCredential("dummy", new SecureString());
 
         [Parameter(
             Mandatory = true,
@@ -106,11 +106,22 @@ namespace ProcessEx.Commands
         {
             if (ParameterSetName == "FilePathCredential" || ParameterSetName == "FilePathToken")
             {
-                ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath);
+                try
+                {
+                    ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath);
+                }
+                catch (NullReferenceException) // No documentation on this exception.
+                {
+                    ApplicationName = FilePath;
+                }
+
                 List<string> commands = new List<string>() { ApplicationName };
                 commands.AddRange(ArgumentList);
                 CommandLine = String.Join(" ", commands.Select(a => ArgumentHelper.EscapeArgument(a)));
             }
+
+            if (String.IsNullOrWhiteSpace(WorkingDirectory))
+                WorkingDirectory = SessionState.Path.CurrentFileSystemLocation.Path;
 
             if (StartupInfo == null)
                 StartupInfo = new StartupInfo();
@@ -121,7 +132,7 @@ namespace ProcessEx.Commands
                 WriteError(new ErrorRecord(ex, "WithAndInheritedHandles", ErrorCategory.InvalidArgument, null));
                 return;
             }
-            if (StartupInfo.ParentProcess != null)
+            if (StartupInfo.ParentProcess != 0)
             {
                 ArgumentException ex = new ArgumentException("Start-ProcessWith cannot be used with ParentProcess");
                 WriteError(new ErrorRecord(ex, "WithAndParentProcess", ErrorCategory.InvalidArgument, null));
@@ -163,26 +174,32 @@ namespace ProcessEx.Commands
             })));
 
             ProcessInfo info;
-            if (Token != null)
+            try
             {
-                info = ProcessRunner.CreateProcessWithToken(Token, logonFlags, ApplicationName, CommandLine,
-                    CreationFlags, Environment, WorkingDirectory, StartupInfo!);
-            }
-            else
-            {
-                Debug.Assert(Credential != null);
-
-                string username = "";
-                string? domain = null;
-                if (Credential.UserName.Contains("\\"))
+                if (Token != null)
                 {
-                    string[] userSplit = Credential.UserName.Split(new char[1] { '\\' }, 2);
-                    domain = userSplit[0];
-                    username = userSplit[1];
+                    info = ProcessRunner.CreateProcessWithToken(Token, logonFlags, ApplicationName, CommandLine,
+                        CreationFlags, Environment, WorkingDirectory, StartupInfo!);
                 }
+                else
+                {
+                    string username = Credential.UserName;
+                    string? domain = null;
+                    if (username.Contains("\\"))
+                    {
+                        string[] userSplit = username.Split(new char[1] { '\\' }, 2);
+                        domain = userSplit[0];
+                        username = userSplit[1];
+                    }
 
-                info = ProcessRunner.CreateProcessWithLogon(username, domain, Credential.Password, logonFlags,
-                    ApplicationName, CommandLine, CreationFlags, Environment, WorkingDirectory, StartupInfo!);
+                    info = ProcessRunner.CreateProcessWithLogon(username, domain, Credential.Password, logonFlags,
+                        ApplicationName, CommandLine, CreationFlags, Environment, WorkingDirectory, StartupInfo!);
+                }
+            }
+            catch (NativeException e)
+            {
+                WriteError(ErrorHelper.GenerateWin32Error(e, "Failed to create process"));
+                return;
             }
 
             WriteVerbose($"Process created with PID {info.ProcessId} and TID {info.ThreadId}");
@@ -194,7 +211,7 @@ namespace ProcessEx.Commands
             else if (!suspended)
             {
                 WriteVerbose("Resuming process");
-                Kernel32.ResumeThread(info.Thread);
+                ProcessRunner.ResumeThread(info.Thread);
             }
 
             if (PassThru)
