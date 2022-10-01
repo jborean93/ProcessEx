@@ -113,7 +113,9 @@ namespace ProcessEx.Native
         public struct RTL_USER_PROCESS_PARAMETERS
         {
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)] public byte[] Reserved1;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public IntPtr[] Reserved2;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)] public IntPtr[] Reserved2;
+            public UNICODE_STRING CurrentDirectoryPath;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)] public IntPtr[] Reserved3;
             public UNICODE_STRING ImagePathName;
             public UNICODE_STRING CommandLine;
             public IntPtr Environment; // Undocumented but comes after CommandLine
@@ -123,7 +125,9 @@ namespace ProcessEx.Native
         public struct RTL_USER_PROCESS_PARAMETERS_32
         {
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)] public byte[] Reserved1;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public Int32[] Reserved2;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)] public Int32[] Reserved2;
+            public UNICODE_STRING_32 CurrentDirectoryPath;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)] public Int32[] Reserved3;
             public UNICODE_STRING_32 ImagePathName;
             public UNICODE_STRING_32 CommandLine;
             public Int32 Environment; // Undocumented but comes after CommandLine
@@ -133,7 +137,9 @@ namespace ProcessEx.Native
         public struct RTL_USER_PROCESS_PARAMETERS_64
         {
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)] public byte[] Reserved1;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public Int64[] Reserved2;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)] public Int64[] Reserved2;
+            public UNICODE_STRING_64 CurrentDirectoryPath;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)] public Int64[] Reserved3;
             public UNICODE_STRING_64 ImagePathName;
             public UNICODE_STRING_64 CommandLine;
             public Int64 Environment; // Undocumented but comes after CommandLine

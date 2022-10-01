@@ -54,6 +54,7 @@ Describe "Get-ProcessEx" {
                 $actual.Executable | Should -Be "C:\Windows\SysWow64\WindowsPowerShell\v1.0\powershell.exe"
             }
             $actual.CommandLine | Should -Be $procParams.CommandLine
+            $actual.WorkingDirectory | Should -Be "$([System.Environment]::CurrentDirectory)\"
             $actual.Environment.Count | Should -Be 2
             $actual.Environment.AAA | Should -Be "aaa"
             $actual.Environment.ZZZ | Should -Be "zzz"
@@ -85,6 +86,7 @@ Describe "Get-ProcessEx" {
                         AAA = "aaa"
                         ZZZ = "zzz"
                     }
+                    WorkingDirectory = "C:\Windows\TEMP"
                     PassThru = $true
                 }
 
@@ -100,6 +102,7 @@ Describe "Get-ProcessEx" {
 
             $actual.Executable | Should -Be  $pwshNative
             $actual.CommandLine | Should -Be $cmdLine
+            $actual.WorkingDirectory | Should -Be "C:\Windows\TEMP\"
             $actual.Environment.Count | Should -Be 2
             $actual.Environment.AAA | Should -Be "aaa"
             $actual.Environment.ZZZ | Should -Be "zzz"
@@ -123,6 +126,7 @@ Describe "Get-ProcessEx" {
                         AAA = "aaa"
                         ZZZ = "zzz"
                     }
+                    WorkingDirectory = "C:\Windows\TEMP\"
                     PassThru = $true
                 }
 
@@ -138,6 +142,7 @@ Describe "Get-ProcessEx" {
 
             $actual.Executable | Should -Be  $pwsh32
             $actual.CommandLine | Should -Be $cmdLine
+            $actual.WorkingDirectory | Should -Be "C:\Windows\TEMP\"
             $actual.Environment.Count | Should -Be 2
             $actual.Environment.AAA | Should -Be "aaa"
             $actual.Environment.ZZZ | Should -Be "zzz"
@@ -161,6 +166,7 @@ Describe "Get-ProcessEx" {
                         AAA = "aaa"
                         ZZZ = "zzz"
                     }
+                    WorkingDirectory = "C:\Windows\TEMP"
                     PassThru = $true
                 }
 
@@ -176,6 +182,7 @@ Describe "Get-ProcessEx" {
 
             $actual.Executable | Should -Be "C:\Windows\SysWow64\WindowsPowerShell\v1.0\powershell.exe"
             $actual.CommandLine | Should -Be $cmdLine
+            $actual.WorkingDirectory | Should -Be "C:\Windows\TEMP\"
             $actual.Environment.Count | Should -Be 2
             $actual.Environment.AAA | Should -Be "aaa"
             $actual.Environment.ZZZ | Should -Be "zzz"
@@ -199,6 +206,7 @@ Describe "Get-ProcessEx" {
                         AAA = "aaa"
                         ZZZ = "zzz"
                     }
+                    WorkingDirectory = "C:\Windows\TEMP"
                     PassThru = $true
                 }
 
@@ -214,6 +222,7 @@ Describe "Get-ProcessEx" {
 
             $actual.Executable | Should -Be $pwshNative
             $actual.CommandLine | Should -Be $cmdLine
+            $actual.WorkingDirectory | Should -Be "C:\Windows\TEMP\"
             $actual.Environment.Count | Should -Be 2
             $actual.Environment.AAA | Should -Be "aaa"
             $actual.Environment.ZZZ | Should -Be "zzz"

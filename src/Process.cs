@@ -583,6 +583,28 @@ namespace ProcessEx
                 { "password", password },
                 { "logonFlags", logonFlags },
             };
+
+            // If not explicit desktop/station was specified and the current process is running in session 0, the new
+            // process will fail with Access Denied. By setting an explicit station/desktop in this field for these
+            // scenarios the process will be able to spawn in the current station/desktop. The rules for how a process
+            // decides on a desktop/station is in but in the session 0 (non-interactive) case it will try to create a
+            // new station based on the logon id (not known right now) but fails due to access permissions. By
+            // explicitly setting the desktop/station we can get it to use the current one.
+            // https://learn.microsoft.com/en-us/windows/win32/winstation/process-connection-to-a-window-station
+            if (string.IsNullOrWhiteSpace(startupInfo.Desktop))
+            {
+                using SafeNativeHandle currentToken = Advapi32.OpenProcessToken(Kernel32.GetCurrentProcess(),
+                    TokenAccessLevels.Query);
+                UInt32 currentSessionId = GetTokenSessionid(currentToken);
+
+                if (currentSessionId == 0)
+                {
+                    using SafeHandle currentStation = User32.GetProcessWindowStation();
+                    using SafeHandle currentDesktop = User32.GetThreadDesktop(Kernel32.GetCurrentThreadId());
+                    startupInfo.Desktop = string.Format("{0}\\{1}",
+                        GetObjectName(currentStation), GetObjectName(currentDesktop));
+                }
+            }
             return CreateProcessInternal(applicationName, commandLine, null, null, false, creationFlags, environment,
                 currentDirectory, startupInfo, false, null, ext, CreateProcessWithLogonDel);
         }
@@ -1028,6 +1050,17 @@ namespace ProcessEx
 
             var tokenUser = Marshal.PtrToStructure<Helpers.TOKEN_USER>(buffer.DangerousGetHandle());
             return new SecurityIdentifier(tokenUser.User.Sid);
+        }
+
+        private static UInt32 GetTokenSessionid(SafeHandle handle)
+        {
+            using SafeMemoryBuffer buffer = Advapi32.GetTokenInformation(handle,
+                Helpers.TOKEN_INFORMATION_CLASS.TokenSessionId);
+
+            unsafe
+            {
+                return *(uint *)buffer.DangerousGetHandle();
+            }
         }
 
         private static SecurityIdentifier GetTokenLogonSid(SafeHandle handle)

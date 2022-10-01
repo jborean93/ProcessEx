@@ -392,6 +392,8 @@ This object contains the following properties:
 
 - `CommandLine` - The command line used to start the process
 
+- `WorkingDirectory` - The working/current directory of the process
+
 - `Process` - The `SafeHandle` of the process created
 
 - `Thread` - The `SafeHandle` of the main thread

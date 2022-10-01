@@ -19,15 +19,14 @@ $IsUnix = $PSEdition -eq 'Core' -and -not $IsWindows
 
 [xml]$csharpProjectInfo = Get-Content ([IO.Path]::Combine($CSharpPath, '*.csproj'))
 $TargetFrameworks = @($csharpProjectInfo.Project.PropertyGroup.TargetFrameworks[0].Split(
-    ';', [StringSplitOptions]::RemoveEmptyEntries))
+        ';', [StringSplitOptions]::RemoveEmptyEntries))
 
 $PSFramework = if ($PSVersionTable.PSVersion.Major -eq 5) {
-    $csharpProjectInfo.Project.PropertyGroup.PSWinFramework[0]
+    $TargetFrameworks[0]
 }
 else {
-    $csharpProjectInfo.Project.PropertyGroup.PSFramework[0]
+    $TargetFrameworks[1]
 }
-
 
 task Clean {
     if (Test-Path $ReleasePath) {
@@ -39,7 +38,7 @@ task Clean {
 
 task BuildDocs {
     $helpParams = @{
-        Path = [IO.Path]::Combine($PSScriptRoot, 'docs', 'en-US')
+        Path       = [IO.Path]::Combine($PSScriptRoot, 'docs', 'en-US')
         OutputPath = [IO.Path]::Combine($ReleasePath, 'en-US')
     }
     New-ExternalHelp @helpParams | Out-Null
@@ -75,10 +74,10 @@ task BuildManaged {
 
 task CopyToRelease {
     $copyParams = @{
-        Path = [IO.Path]::Combine($PowerShellPath, '*')
+        Path        = [IO.Path]::Combine($PowerShellPath, '*')
         Destination = $ReleasePath
-        Recurse = $true
-        Force = $true
+        Recurse     = $true
+        Force       = $true
     }
     Copy-Item @copyParams
 
@@ -92,16 +91,41 @@ task CopyToRelease {
     }
 }
 
+task Sign {
+    $certPath = $env:PSMODULE_SIGNING_CERT
+    $certPassword = $env:PSMODULE_SIGNING_CERT_PASSWORD
+    if (-not $certPath -or -not $certPassword) {
+        return
+    }
+
+    [byte[]]$certBytes = [System.Convert]::FromBase64String($env:PSMODULE_SIGNING_CERT)
+    $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certBytes, $certPassword)
+    $signParams = @{
+        Certificate     = $cert
+        TimestampServer = 'http://timestamp.digicert.com'
+        HashAlgorithm   = 'SHA256'
+    }
+
+    Get-ChildItem -LiteralPath $ReleasePath -Recurse -ErrorAction SilentlyContinue |
+        Where-Object Extension -in ".ps1", ".psm1", ".psd1", ".ps1xml", ".dll" |
+        ForEach-Object -Process {
+            $result = Set-AuthenticodeSignature -LiteralPath $_.FullName @signParams
+            if ($result.Status -ne "Valid") {
+                throw "Failed to sign $($_.FullName) - Status: $($result.Status) Message: $($result.StatusMessage)"
+            }
+        }
+}
+
 task Package {
-    $nupkgPath = [IO.Path]::Combine($BuildPath, "$ModuleName.$Version.nupkg")
+    $nupkgPath = [IO.Path]::Combine($BuildPath, "$ModuleName.$Version*.nupkg")
     if (Test-Path $nupkgPath) {
         Remove-Item $nupkgPath -Force
     }
 
     $repoParams = @{
-        Name = 'LocalRepo'
-        SourceLocation = $BuildPath
-        PublishLocation = $BuildPath
+        Name               = 'LocalRepo'
+        SourceLocation     = $BuildPath
+        PublishLocation    = $BuildPath
         InstallationPolicy = 'Trusted'
     }
     if (Get-PSRepository -Name $repoParams.Name -ErrorAction SilentlyContinue) {
@@ -111,22 +135,73 @@ task Package {
     Register-PSRepository @repoParams
     try {
         Publish-Module -Path $ReleasePath -Repository $repoParams.Name
-    } finally {
+    }
+    finally {
         Unregister-PSRepository -Name $repoParams.Name
     }
 }
 
 task Analyze {
     $pssaSplat = @{
-        Path = $ReleasePath
-        Settings = [IO.Path]::Combine($PSScriptRoot, 'ScriptAnalyzerSettings.psd1')
-        Recurse = $true
+        Path        = $ReleasePath
+        Settings    = [IO.Path]::Combine($PSScriptRoot, 'ScriptAnalyzerSettings.psd1')
+        Recurse     = $true
         ErrorAction = 'SilentlyContinue'
     }
     $results = Invoke-ScriptAnalyzer @pssaSplat
     if ($null -ne $results) {
         $results | Out-String
         throw "Failed PsScriptAnalyzer tests, build failed"
+    }
+}
+
+task DoUnitTest {
+    $testsPath = [IO.Path]::Combine($PSScriptRoot, 'tests', 'units')
+    if (-not (Test-Path -LiteralPath $testsPath)) {
+        Write-Host "No unit tests found, skipping"
+        return
+    }
+
+    $resultsPath = [IO.Path]::Combine($BuildPath, 'TestResults')
+    if (-not (Test-Path -LiteralPath $resultsPath)) {
+        New-Item $resultsPath -ItemType Directory -ErrorAction Stop | Out-Null
+    }
+
+    # dotnet test places the results in a subfolder of the results-directory. This subfolder is based on a random guid
+    # so a temp folder is used to ensure we only get the current runs results
+    $tempResultsPath = [IO.Path]::Combine($resultsPath, "TempUnit")
+    if (Test-Path -LiteralPath $tempResultsPath) {
+        Remove-Item -LiteralPath $tempResultsPath -Force -Recurse
+    }
+    New-Item -Path $tempResultsPath -ItemType Directory | Out-Null
+
+    try {
+        $runSettingsPrefix = 'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration'
+        $arguments = @(
+            'test'
+            '"{0}"' -f $testsPath
+            '--results-directory', $tempResultsPath
+            if ($Configuration -eq 'Debug') {
+                '--collect:"XPlat Code Coverage"'
+                '--'
+                "$runSettingsPrefix.Format=json"
+                "$runSettingsPrefix.IncludeDirectory=`"$CSharpPath`""
+            }
+        )
+
+        Write-Host "Running unit tests"
+        dotnet @arguments
+
+        if ($LASTEXITCODE) {
+            throw "Unit tests failed"
+        }
+
+        if ($Configuration -eq 'Debug') {
+            Move-Item -Path $tempResultsPath/*/*.json -Destination $resultsPath/UnitCoverage.json -Force
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $tempResultsPath -Force -Recurse
     }
 }
 
@@ -156,18 +231,23 @@ task DoTest {
 
     if ($Configuration -eq 'Debug') {
         # We use coverlet to collect code coverage of our binary
+        $unitCoveragePath = [IO.Path]::Combine($resultsPath, 'UnitCoverage.json')
+
         $arguments = @(
             '"{0}"' -f ([IO.Path]::Combine($ReleasePath, 'bin', $PSFramework))
             '--target', $pwsh
             '--targetargs', (($arguments -join " ") -replace '"', '\"')
             '--output', ([IO.Path]::Combine($resultsPath, 'Coverage.xml'))
             '--format', 'cobertura'
+            if (Test-Path -LiteralPath $unitCoveragePath) {
+                '--merge-with', $unitCoveragePath
+            }
         )
         $pwsh = 'coverlet'
     }
 
     &$pwsh $arguments
-    if($LASTEXITCODE) {
+    if ($LASTEXITCODE) {
         throw "Pester failed tests"
     }
 }
@@ -186,11 +266,10 @@ task DoInstall {
     Copy-Item -Path ([IO.Path]::Combine($ReleasePath, '*')) -Destination $installPath -Force -Recurse
 }
 
-task Build -Jobs Clean, BuildManaged, CopyToRelease, BuildDocs, Package
+task Build -Jobs Clean, BuildManaged, CopyToRelease, BuildDocs, Sign, Package
 
 # FIXME: Work out why we need the obj and bin folder for coverage to work
-task Test -Jobs BuildManaged, Analyze, DoTest
-
+task Test -Jobs BuildManaged, Analyze, DoUnitTest, DoTest
 task Install -Jobs DoInstall
 
 task . Build
