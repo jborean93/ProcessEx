@@ -23,7 +23,7 @@ These cmdlets have the following requirements
 ## Installing
 
 The easiest way to install this module is through
-[PowerShellGet](https://docs.microsoft.com/en-us/powershell/gallery/overview).
+[PowerShellGet](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview#the-powershellget-module).
 
 You can install this module by running;
 
