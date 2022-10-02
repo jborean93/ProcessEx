@@ -1,6 +1,6 @@
 # Changelog for ProcessEx
 
-## v0.2.0 - TBD
+## v0.2.0 - 2022-10-02
 
 * Added `WorkingDirectory` to the `ProcessInfo` object returned by `Get-ProcessEx`
 * Fixed `Start-ProcessWith ... -Credential $cred` when running in a non-interactive session
