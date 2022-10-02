@@ -12,9 +12,6 @@ on:
     types:
     - published
 
-  schedule:
-  - cron: 0 9 * * *
-
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   POWERSHELL_TELEMETRY_OPTOUT: 1
@@ -30,9 +27,18 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Build module
+    - name: Build module - Debug
       shell: pwsh
       run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
+      if: ${{ env.BUILD_CONFIGURATION == 'Debug' }}
+
+    - name: Build module - Publish
+      shell: pwsh
+      run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
+      if: ${{ env.BUILD_CONFIGURATION == 'Release' }}
+      env:
+        PSMODULE_SIGNING_CERT: ${{ secrets.PSMODULE_SIGNING_CERT }}
+        PSMODULE_SIGNING_CERT_PASSWORD: ${{ secrets.PSMODULE_SIGNING_CERT_PASSWORD }}
 
     - name: Capture PowerShell Module
       uses: actions/upload-artifact@v2
@@ -73,7 +79,7 @@ jobs:
       run: |
         $manifestItem = Get-Item ([IO.Path]::Combine('module', '*.psd1'))
         $moduleName = $manifestItem.BaseName
-        $manifest = Test-ModuleManifest -Path $manifestItem.FullName -ErrorAction Stop -WarningAction Ignore
+        $manifest = Test-ModuleManifest -Path $manifestItem.FullName -ErrorAction SilentlyContinue -WarningAction Ignore
 
         $destPath = [IO.Path]::Combine('output', $moduleName, $manifest.Version)
         if (-not (Test-Path -LiteralPath $destPath)) {
@@ -88,7 +94,7 @@ jobs:
     - name: Run Tests
       shell: pwsh
       run: |
-        & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test -Elevate
+        & "${{ matrix.info.psversion }}" -NoProfile -File ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Test -Elevated
         exit $LASTEXITCODE
 
     - name: Upload Test Results
@@ -133,6 +139,6 @@ jobs:
         dotnet nuget push '*.nupkg'
         --api-key $env:PSGALLERY_TOKEN
         --source 'https://www.powershellgallery.com/api/v2/package'
-        --no-symbols true
+        --no-symbols
       env:
         PSGALLERY_TOKEN: ${{ secrets.PSGALLERY_TOKEN }}

@@ -95,6 +95,8 @@ The `ProcessInfo` of the opened process. This contains properties like the proce
 
 - `CommandLine` - The command line used to start the process
 
+- `WorkingDirectory` - The working/current directory of the process
+
 - `Process` - The `SafeHandle` of the process retrieved
 
 - `Thread` - This is not set in the output from `Get-ProcessEx` and should be ignored

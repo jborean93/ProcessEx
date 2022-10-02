@@ -10,6 +10,7 @@ namespace ProcessEx
     public class ProcessInfo
     {
         private string? _executable;
+        private string? _workingDirectory;
         private string? _cmdLine;
         private int _pid;
         private int _tid;
@@ -23,6 +24,15 @@ namespace ProcessEx
             {
                 _executable ??= Kernel32.QueryFullProcessImageName(Process, Helpers.QueryImageNameFlags.NONE);
                 return _executable;
+            }
+        }
+
+        public string WorkingDirectory
+        {
+            get
+            {
+                _workingDirectory ??= ProcessEnvironmentBlock.ProcessParameters.WorkingDirectory;
+                return _workingDirectory;
             }
         }
 
@@ -247,6 +257,7 @@ namespace ProcessEx
 
     internal class ProcessParameters
     {
+        public string WorkingDirectory { get; set; }
         public string ImagePathName { get; set; }
         public string CommandLine { get; set; }
         public Dictionary<string, string> Environment { get; set; }
@@ -257,6 +268,7 @@ namespace ProcessEx
                 (IntPtr)Marshal.SizeOf(typeof(Helpers.RTL_USER_PROCESS_PARAMETERS)));
             var pp = Marshal.PtrToStructure<Helpers.RTL_USER_PROCESS_PARAMETERS>(buffer.DangerousGetHandle());
 
+            WorkingDirectory = ConvertUnicodeString(process, pp.CurrentDirectoryPath);
             ImagePathName = ConvertUnicodeString(process, pp.ImagePathName);
             CommandLine = ConvertUnicodeString(process, pp.CommandLine);
             Environment = GetEnvironment(process, pp.Environment);
@@ -268,6 +280,7 @@ namespace ProcessEx
                 (IntPtr)Marshal.SizeOf(typeof(Helpers.RTL_USER_PROCESS_PARAMETERS_32)));
             var pp = Marshal.PtrToStructure<Helpers.RTL_USER_PROCESS_PARAMETERS_32>(buffer.DangerousGetHandle());
 
+            WorkingDirectory = ConvertUnicodeString(process, pp.CurrentDirectoryPath);
             ImagePathName = ConvertUnicodeString(process, pp.ImagePathName);
             CommandLine = ConvertUnicodeString(process, pp.CommandLine);
             Environment = GetEnvironment(process, (IntPtr)pp.Environment);
@@ -279,6 +292,7 @@ namespace ProcessEx
                 Marshal.SizeOf(typeof(Helpers.RTL_USER_PROCESS_PARAMETERS_64)));
             var pp = Marshal.PtrToStructure<Helpers.RTL_USER_PROCESS_PARAMETERS_64>(buffer.DangerousGetHandle());
 
+            WorkingDirectory = ConvertUnicodeString(process, pp.CurrentDirectoryPath);
             ImagePathName = ConvertUnicodeString(process, pp.ImagePathName);
             CommandLine = ConvertUnicodeString(process, pp.CommandLine);
             Environment = GetEnvironment(process, pp.Environment);

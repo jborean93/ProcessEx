@@ -6,10 +6,6 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-
-    <!--Used in test build scripts-->
-    <PSWinFramework>net472</PSWinFramework>
-    <PSFramework>netcoreapp3.1</PSFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">
