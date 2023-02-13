@@ -688,6 +688,30 @@ Describe "Start-ProcessEx" {
         }
     }
 
+    It "Associated with custom jobs" {
+        $job1 = $job2 = $job3 = $proc = $null
+        try {
+            $job1 = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job1")
+            $job2 = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job2")
+            $job3 = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job3")
+
+            $si = New-StartupInfo -JobList $job1, $job2
+            $proc = Start-ProcessEx -CommandLine powershell.exe -StartupInfo $si -PassThru
+
+            [ProcessExTests.Native]::IsProcessInJob($proc.Process, $job1) | Should -BeTrue
+            [ProcessExTests.Native]::IsProcessInJob($proc.Process, $job2) | Should -BeTrue
+            [ProcessExTests.Native]::IsProcessInJob($proc.Process, $job3) | Should -BeFalse
+        }
+        finally {
+            if ($proc) {
+                $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+            if ($job1) { $job1.Dispose() }
+            if ($job2) { $job2.Dispose() }
+            if ($job3) { $job3.Dispose() }
+        }
+    }
+
     It "Parent process" {
         $parentProc = Start-ProcessEx powershell.exe -PassThru
         try {
@@ -1615,6 +1639,30 @@ Describe "Start-ProcessEx with Token" -Skip:(Get-ProcessPrivilege -Name SeAssign
             $pipe1.Dispose()
             $pipe2.Dispose()
             $pipe3.Dispose()
+        }
+    }
+
+    It "Associated with custom jobs" {
+        $job1 = $job2 = $job3 = $proc = $null
+        try {
+            $job1 = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job1")
+            $job2 = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job2")
+            $job3 = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job3")
+
+            $si = New-StartupInfo -JobList $job1, $job2
+            $proc = Start-ProcessEx -CommandLine powershell.exe -StartupInfo $si -PassThru -Token $token
+
+            [ProcessExTests.Native]::IsProcessInJob($proc.Process, $job1) | Should -BeTrue
+            [ProcessExTests.Native]::IsProcessInJob($proc.Process, $job2) | Should -BeTrue
+            [ProcessExTests.Native]::IsProcessInJob($proc.Process, $job3) | Should -BeFalse
+        }
+        finally {
+            if ($proc) {
+                $proc | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+            if ($job1) { $job1.Dispose() }
+            if ($job2) { $job2.Dispose() }
+            if ($job3) { $job3.Dispose() }
         }
     }
 

@@ -17,8 +17,8 @@ Create a StartupInfo object for creating a process.
 New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
  [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
  [-Reserved <String>] [-Reserved2 <Byte[]>] [-StandardInput <SafeHandle>] [-StandardOutput <SafeHandle>]
- [-StandardError <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-ParentProcess <ProcessIntString>]
- [<CommonParameters>]
+ [-StandardError <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-JobList <SafeHandle[]>]
+ [-ParentProcess <ProcessIntString>] [<CommonParameters>]
 ```
 
 ### ConPTY
@@ -26,7 +26,7 @@ New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] 
 New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
  [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
  [-Reserved <String>] [-Reserved2 <Byte[]>] [-ConPTY <SafeHandle>] [-InheritedHandle <SafeHandle[]>]
- [-ParentProcess <ProcessIntString>] [<CommonParameters>]
+ [-JobList <SafeHandle[]>] [-ParentProcess <ProcessIntString>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -183,6 +183,24 @@ When `-ParentProcess` is not set, all these handles will be changed to an inheri
 When `-ParentProcess` is set then these handles need to be a valid handle in the parent process itself.
 Use `Copy-HandleToProcess` with `-Inherit` and `-OwnHandle` to open them in the parent process for it to be a valid handle for inheritance by the new process.
 Not having an inherited handle in the parent process will cause a failure when trying to start the process.
+This will not work with `Start-ProcessWith` due to the restrictions in the underlying APIs it calls.
+
+```yaml
+Type: SafeHandle[]
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -JobList
+A list of job handles to be assigned to the child process.
+If omitted then the child will be assigned the job of the calling process if it is part of any job.
+This requires Windows 10, Server 2016, or newer to be used.
 This will not work with `Start-ProcessWith` due to the restrictions in the underlying APIs it calls.
 
 ```yaml

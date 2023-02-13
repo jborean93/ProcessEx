@@ -104,6 +104,20 @@ namespace ProcessExTests
             return handle;
         }
 
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern SafeProcessHandle CreateJobObjectW(
+            IntPtr lpJobAttributes,
+            string lpName);
+
+        public static SafeProcessHandle CreateJobObject(string name)
+        {
+            SafeProcessHandle job = CreateJobObjectW(IntPtr.Zero, name);
+            if (job.DangerousGetHandle() == IntPtr.Zero)
+                throw new Win32Exception();
+
+            return job;
+        }
+
         [DllImport("Userenv.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern bool DeleteProfileW(
             string lpSidString,
@@ -276,6 +290,23 @@ namespace ProcessExTests
         {
             if (!NativeImpersonateLoggedOnUser(token))
                 throw new Win32Exception();
+        }
+
+        [DllImport("Kernel32.dll", EntryPoint = "IsProcessInJob", SetLastError = true)]
+        private static extern bool NativeIsProcessInJob(
+            SafeHandle ProcessHandle,
+            SafeHandle JobHandle,
+            out bool Result);
+
+        public static bool IsProcessInJob(SafeHandle process, SafeHandle job)
+        {
+            bool res;
+            if (!NativeIsProcessInJob(process, job, out res))
+            {
+                throw new Win32Exception();
+            }
+
+            return res;
         }
 
         [DllImport("Userenv.dll", CharSet = CharSet.Unicode, SetLastError = true)]
