@@ -170,8 +170,7 @@ The handles to copy to the target process.
 ## OUTPUTS
 
 ### ProcessEx.Native.SafeDuplicateHandle
-The duplicated handle that can be used in the target process.
-Use `[string]$out.DangerousGetHandle()` to get a serialzied representation of the handle to pass to the target process.
+The duplicated handle that can be used in the target process. Use `[string]$out.DangerousGetHandle()` to get a serialzied representation of the handle to pass to the target process.
 
 ## NOTES
 

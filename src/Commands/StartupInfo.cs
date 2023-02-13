@@ -103,6 +103,9 @@ namespace ProcessEx.Commands
         public SafeHandle[] InheritedHandle = Array.Empty<SafeHandle>();
 
         [Parameter()]
+        public SafeHandle[] JobList = Array.Empty<SafeHandle>();
+
+        [Parameter()]
         public ProcessIntString? ParentProcess;
 
         protected override void ProcessRecord()
@@ -163,6 +166,7 @@ namespace ProcessEx.Commands
                 StandardError = StandardError ?? nullHandle,
                 ConPTY = ConPTY ?? nullHandle,
                 InheritedHandles = InheritedHandle,
+                JobList = JobList,
                 ParentProcess = ParentProcess?.ProcessId ?? 0,
                 ParentProcessHandle = ParentProcess?.ProcessHandle,
             });

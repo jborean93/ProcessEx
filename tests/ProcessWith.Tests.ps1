@@ -624,6 +624,20 @@ Describe "Start-ProcessWith" {
         }
     }
 
+    It "Fails with job list" {
+        $job = [ProcessExTests.Native]::CreateJobObject("ProcessEx-Job")
+        try {
+            $err = $null
+            $si = New-StartupInfo -JobList $job
+            Start-ProcessWith pwsh -StartupInfo $si -Token $token -ErrorAction SilentlyContinue -ErrorVariable err
+            $err.Count | Should -Be 1
+            [string]$err[0] | Should -Be "Start-ProcessWith cannot be used with JobList"
+        }
+        finally {
+            $job.Dispose()
+        }
+    }
+
     It "Fails with parent process" {
         $si = New-StartupInfo -ParentProcess $pid
         $err = $null

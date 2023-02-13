@@ -1,5 +1,11 @@
 # Changelog for ProcessEx
 
+## v0.3.0 - TBD
+
+* Added `JobList` to `New-StartupInfo`
+  * This provides an easier way to specify the jobs a new process is a member of
+  * Requires Windows 10 or Server 2016
+
 ## v0.2.0 - 2022-10-02
 
 * Added `WorkingDirectory` to the `ProcessInfo` object returned by `Get-ProcessEx`

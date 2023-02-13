@@ -65,8 +65,7 @@ The `Process` object, process id, or name.
 ## OUTPUTS
 
 ### System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib, Version=6.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=6.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
-A dictionary containing the environment variables.
-Each key is case insensitive as environment variables on Windows are case insensitive.
+A dictionary containing the environment variables. Each key is case insensitive as environment variables on Windows are case insensitive.
 
 ## NOTES
 This function uses undocumented APIs to retrieve the environment variables of other processes.

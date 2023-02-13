@@ -132,6 +132,12 @@ namespace ProcessEx.Commands
                 WriteError(new ErrorRecord(ex, "WithAndInheritedHandles", ErrorCategory.InvalidArgument, null));
                 return;
             }
+            if (StartupInfo.JobList.Length > 0)
+            {
+                ArgumentException ex = new ArgumentException("Start-ProcessWith cannot be used with JobList");
+                WriteError(new ErrorRecord(ex, "WithAndJobList", ErrorCategory.InvalidArgument, null));
+                return;
+            }
             if (StartupInfo.ParentProcess != 0)
             {
                 ArgumentException ex = new ArgumentException("Start-ProcessWith cannot be used with ParentProcess");

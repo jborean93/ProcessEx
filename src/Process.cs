@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
@@ -72,7 +73,9 @@ namespace ProcessEx
         // ProcThreadAttributes
         public SafeHandle ConPTY { get; set; } = Helpers.NULL_HANDLE_VALUE;
         public SafeHandle[] InheritedHandles { get; set; } = Array.Empty<SafeHandle>();
+        public SafeHandle[] JobList { get; set; } = Array.Empty<SafeHandle>();
         public int ParentProcess { get; set; } = 0;
+
         internal SafeHandle? ParentProcessHandle { get; set; }
 
         internal SafeHandle OpenParentProcessHandle(ProcessAccessRights access)
@@ -890,6 +893,9 @@ namespace ProcessEx
             if (startupInfo.InheritedHandles.Length > 0)
                 count++;
 
+            if (startupInfo.JobList.Length > 0)
+                count++;
+
             if (startupInfo.ConPTY.DangerousGetHandle() != IntPtr.Zero)
                 count++;
 
@@ -961,6 +967,27 @@ namespace ProcessEx
 
                     Kernel32.UpdateProcThreadAttribute(attr,
                         Helpers.ProcessThreadAttribute.PROC_THREAD_ATTRIBUTE_HANDLE_LIST, val, (UIntPtr)valueSize);
+                }
+
+                if (startupInfo.JobList.Length > 0)
+                {
+                    HashSet<IntPtr> handles = startupInfo.JobList
+                        .Select(j => j.DangerousGetHandle())
+                        .ToHashSet();
+
+                    int valueSize = IntPtr.Size * handles.Count;
+                    SafeMemoryBuffer val = new SafeMemoryBuffer(valueSize);
+                    attr.values.Add(val);
+
+                    IntPtr valOffset = val.DangerousGetHandle();
+                    foreach (IntPtr handle in handles)
+                    {
+                        Marshal.WriteIntPtr(valOffset, handle);
+                        valOffset = IntPtr.Add(valOffset, IntPtr.Size);
+                    }
+
+                    Kernel32.UpdateProcThreadAttribute(attr,
+                        Helpers.ProcessThreadAttribute.PROC_THREAD_ATTRIBUTE_JOB_LIST, val, (UIntPtr)valueSize);
                 }
             }
             catch
