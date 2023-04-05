@@ -14,7 +14,7 @@
     RootModule = 'ProcessEx.psm1'
 
     # Version number of this module.
-    ModuleVersion = '0.3.0'
+    ModuleVersion = '0.4.0'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -77,6 +77,7 @@
         'Get-ProcessEx'
         'Get-StartupInfo'
         'Get-TokenEnvironment'
+        'Invoke-WithUac'
         'New-ConPTY'
         'New-StartupInfo'
         'Resize-ConPTY'
@@ -88,7 +89,9 @@
     VariablesToExport = @()
 
     # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-    AliasesToExport = @()
+    AliasesToExport = @(
+        'uac'
+    )
 
     # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
     PrivateData = @{
