@@ -550,15 +550,16 @@ namespace ProcessEx
         internal static ProcessInfo CreateProcessAsUser(SafeHandle token, string? applicationName, string? commandLine,
             SecurityAttributes? processAttributes, SecurityAttributes? threadAttributes, bool inheritHandles,
             CreationFlags creationFlags, IDictionary? environment, string? currentDirectory, StartupInfo startupInfo,
-            bool newEnvironment)
+            bool newEnvironment, bool copyHandle = true)
         {
             Dictionary<string, object?> ext = new Dictionary<string, object?>()
             {
                 { "token", token },
+                { "copyHandle", copyHandle },
             };
             return CreateProcessInternal(applicationName, commandLine, processAttributes, threadAttributes,
                 inheritHandles, creationFlags, environment, currentDirectory, startupInfo, newEnvironment, token,
-                ext, CreateProcessAsUserDel, true);
+                ext, CreateProcessAsUserDel, copyHandle);
         }
 
         private static ProcessInfo CreateProcessAsUserDel(string? applicationName, string? commandLine,
@@ -568,9 +569,11 @@ namespace ProcessEx
         {
             SafeHandle token = (SafeHandle)ext["token"]!;
 
-            SecurityIdentifier sidToAdd = GetSIDForStation(token);
-            GrantStationDesktopAccess(sidToAdd, startupInfo.startupInfo.lpDesktop);
-
+            if ((bool)ext["copyHandle"]!)
+            {
+                SecurityIdentifier sidToAdd = GetSIDForStation(token);
+                GrantStationDesktopAccess(sidToAdd, startupInfo.startupInfo.lpDesktop);
+            }
             return Advapi32.CreateProcessAsUser(token, applicationName, commandLine, processAttributes,
                 threadAttributes, inheritHandles, creationflags, environment, currentDirectory, startupInfo);
         }
@@ -745,7 +748,7 @@ namespace ProcessEx
             using var stdin = PrepareStdioHandle(startupInfo.StandardInput, startupInfo, copyHandle);
             using var stdout = PrepareStdioHandle(startupInfo.StandardOutput, startupInfo, copyHandle);
             using var stderr = PrepareStdioHandle(startupInfo.StandardError, startupInfo, copyHandle);
-            using var procThreadAttr = CreateProcThreadAttributes(startupInfo, stdin, stdout, stderr, copyHandle);
+            using var procThreadAttr = CreateProcThreadAttributes(startupInfo, stdin, stdout, stderr);
             using var processAttr = CreateSecurityAttributes(processAttributes);
             using var threadAttr = CreateSecurityAttributes(threadAttributes);
             using var lpEnvironment = CreateEnvironmentPointer(environment, newEnvironment, userToken);
@@ -884,7 +887,7 @@ namespace ProcessEx
         }
 
         private static SafeHandle CreateProcThreadAttributes(StartupInfo startupInfo, SafeHandle stdin,
-            SafeHandle stdout, SafeHandle stderr, bool copyHandle)
+            SafeHandle stdout, SafeHandle stderr)
         {
             int count = 0;
             if (startupInfo.ParentProcess != 0)
@@ -937,7 +940,7 @@ namespace ProcessEx
 
                         // Can only mark them as inherited if the handle is for the current process. If a handle isn't
                         // inheritable then the CreateProcess call will fail with invalid parameter.
-                        if (startupInfo.ParentProcess == 0 && copyHandle)
+                        if (startupInfo.ParentProcess == 0)
                             Kernel32.SetHandleInformation(handle, flags, flags);
 
                         handles.Add(handle.DangerousGetHandle());
@@ -961,6 +964,7 @@ namespace ProcessEx
                     IntPtr valOffset = val.DangerousGetHandle();
                     foreach (IntPtr handle in handles)
                     {
+                        Console.WriteLine("Test: {0}", (Int64)handle);
                         Marshal.WriteIntPtr(valOffset, handle);
                         valOffset = IntPtr.Add(valOffset, IntPtr.Size);
                     }
