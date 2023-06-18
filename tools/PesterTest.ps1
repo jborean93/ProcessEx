@@ -19,9 +19,18 @@ param (
     $OutputFile
 )
 
+$ErrorActionPreference = 'Stop'
+
 $requirements = Import-PowerShellDataFile ([IO.Path]::Combine($PSScriptRoot, '..', 'requirements-dev.psd1'))
 foreach ($req in $requirements.GetEnumerator()) {
-    Import-Module -Name ([IO.Path]::Combine($PSScriptRoot, 'Modules', $req.Key))
+    try {
+        Import-Module -Name ([IO.Path]::Combine($PSScriptRoot, 'Modules', $req.Key))
+    }
+    catch {
+        if ($req.Key -ne 'OpenAuthenticode') {
+            throw
+        }
+    }
 }
 
 [PSCustomObject]$PSVersionTable |

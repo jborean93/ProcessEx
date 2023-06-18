@@ -25,7 +25,14 @@ end {
         $targetPath = [IO.Path]::Combine($modulePath, $req.Key)
 
         if (Test-Path -LiteralPath $targetPath) {
-            Import-Module -Name $targetPath -Force -ErrorAction Stop
+            try {
+                Import-Module -Name $targetPath -Force -ErrorAction Stop
+            }
+            catch {
+                if ($req.Key -ne 'OpenAuthenticode') {
+                    throw
+                }
+            }
             continue
         }
 
@@ -52,7 +59,15 @@ end {
             $ProgressPreference = $oldProgress
         }
 
-        Import-Module -Name $targetPath -Force -ErrorAction Stop
+        try {
+            Import-Module -Name $targetPath -Force -ErrorAction Stop
+        }
+        catch {
+            if ($req.Key -ne 'OpenAuthenticode') {
+                throw
+            }
+        }
+
     }
 
     if ($Elevated) {

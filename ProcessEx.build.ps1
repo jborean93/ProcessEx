@@ -92,27 +92,36 @@ task CopyToRelease {
 }
 
 task Sign {
-    $certPath = $env:PSMODULE_SIGNING_CERT
-    $certPassword = $env:PSMODULE_SIGNING_CERT_PASSWORD
-    if (-not $certPath -or -not $certPassword) {
+    if (-not $env:AZURE_KEYVAULT_CREDENTIALS) {
         return
     }
 
-    [byte[]]$certBytes = [System.Convert]::FromBase64String($env:PSMODULE_SIGNING_CERT)
-    $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certBytes, $certPassword)
+    $credInfo = ConvertFrom-Json -InputObject $env:AZURE_KEYVAULT_CREDENTIALS
+    $vaultName = $credInfo.vaultName
+    $vaultCert = $credInfo.vaultCert
+
+    $env:AZURE_CLIENT_ID = $credInfo.clientId
+    $env:AZURE_CLIENT_SECRET = $credInfo.clientSecret
+    $env:AZURE_TENANT_ID = $credInfo.tenantId
+    $key = Get-OpenAuthenticodeAzKey -Vault $vaultName -Certificate $vaultCert
+    $env:AZURE_CLIENT_ID = ''
+    $env:AZURE_CLIENT_SECRET = ''
+    $env:AZURE_TENANT_ID = ''
+
     $signParams = @{
-        Certificate     = $cert
-        TimestampServer = 'http://timestamp.digicert.com'
-        HashAlgorithm   = 'SHA256'
+        Key = $key
+        TimeStampServer = 'http://timestamp.digicert.com'
+        HashAlgorithm = 'SHA256'
     }
 
     Get-ChildItem -LiteralPath $ReleasePath -Recurse -ErrorAction SilentlyContinue |
-        Where-Object Extension -in ".ps1", ".psm1", ".psd1", ".ps1xml", ".dll" |
+        Where-Object {
+            $_.Extension -in ".ps1", ".psm1", ".psd1", ".ps1xml" -or (
+                $_.Extension -eq ".dll" -and $_.BaseName -like "$ModuleName*"
+            )
+        } |
         ForEach-Object -Process {
-            $result = Set-AuthenticodeSignature -LiteralPath $_.FullName @signParams
-            if ($result.Status -ne "Valid") {
-                throw "Failed to sign $($_.FullName) - Status: $($result.Status) Message: $($result.StatusMessage)"
-            }
+            Set-OpenAuthenticodeSignature -LiteralPath $_.FullName @signParams
         }
 }
 
