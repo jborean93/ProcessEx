@@ -13,7 +13,8 @@ Resize a ConPTY buffer.
 ## SYNTAX
 
 ```
-Resize-ConPTY [-ConPTY] <SafeHandle[]> [-Width] <Int16> [-Height] <Int16> [<CommonParameters>]
+Resize-ConPTY [-ConPTY] <SafeHandle[]> [-Width] <Int16> [-Height] <Int16> [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -55,6 +56,21 @@ Aliases: Y
 
 Required: True
 Position: 2
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
+Required: False
+Position: Named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False

@@ -1,6 +1,8 @@
 #Requires -Module PSPrivilege
 
 using namespace Microsoft.Win32.SafeHandles
+using namespace System.IO
+using namespace System.IO.Pipes
 using namespace System.Runtime.InteropServices
 using namespace System.Security.AccessControl
 using namespace System.Security.Principal
@@ -43,7 +45,7 @@ param (
 
 $ErrorActionPreference = 'Stop'
 
-. ([IO.Path]::Combine((Split-Path $PSScriptRoot -Parent), "tests", "common.ps1"))
+. ([Path]::Combine((Split-Path $PSScriptRoot -Parent), "tests", "common.ps1"))
 
 $desiredPrivileges = 'SeAssignPrimaryTokenPrivilege', 'SeTcbPrivilege'
 $password = "Password123!"
@@ -72,18 +74,19 @@ try {
     # When running with UAC the token returned here will be the limited token (stripped out groups and privileges).
     # This will retrieve the full token to be used with Start-ProcessWith
     $elevationType = Get-TokenElevationType -Token $token
-    if ($elevationType -eq 3) { # TokenElevationTypeLimited
+    if ($elevationType -eq 3) {
+        # TokenElevationTypeLimited
         $elevatedToken = Get-ElevatedToken -Token $token
         $token.Dispose()
         $token = $elevatedToken
     }
 
     $stdout = [Console]::OpenStandardOutput()
-    $stdoutPipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("In", "None")
+    $stdoutPipe = [AnonymousPipeServerStream]::new("In", "None")
     $stdoutTask = $stdoutPipe.CopyToAsync($stdout)
 
     $stderr = [Console]::OpenStandardError()
-    $stderrPipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("In", "None")
+    $stderrPipe = [AnonymousPipeServerStream]::new("In", "None")
     $stderrTask = $stderrPipe.CopyToAsync($stderr)
 
     $siParams = @{
@@ -97,7 +100,10 @@ try {
     try {
         $profileDir = [ProcessExTests.Native]::GetUserProfileDirectory($token)
         $environment = Get-TokenEnvironment -Token $token
-        $environment.PATH += "$([IO.Path]::PathSeparator)$([IO.Path]::Combine($profileDir, ".dotnet", "tools"))"
+        $environment.PATH += "$([Path]::PathSeparator)$([Path]::Combine($profileDir, ".dotnet", "tools"))"
+        if ($env:GITHUB_ACTIONS) {
+            $environment.GITHUB_ACTIONS = $env:GITHUB_ACTIONS
+        }
 
         $procParams = @{
             FilePath = $Executable
@@ -116,8 +122,8 @@ try {
         [ProcessExTests.Native]::DeleteProfile($user.Value, [NullString]::Value, [NullString]::Value)
 
         # DeleteProfile does not always delete everything, check manually
-        if (Test-Path -Path $profileDir) {
-            Remove-Item -Path $profileDir -Force -Recurse
+        if (Test-Path -LiteralPath $profileDir) {
+            Remove-Item -LiteralPath $profileDir -Force -Recurse
         }
     }
 

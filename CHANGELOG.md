@@ -1,5 +1,7 @@
 # Changelog for ProcessEx
 
+## v0.4.0 - TBD
+
 ## v0.3.0 - 2023-02-15
 
 * Added `JobList` to `New-StartupInfo`

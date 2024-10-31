@@ -17,7 +17,8 @@ Start a new process.
 Start-ProcessEx [-FilePath] <String> [-ArgumentList <String[]>] [-WorkingDirectory <String>]
  [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>] [-ProcessAttribute <SecurityAttributes>]
  [-ThreadAttribute <SecurityAttributes>] [-Environment <IDictionary>] [-Token <SafeHandle>]
- [-UseNewEnvironment] [-DisableInheritance] [-Wait] [-PassThru] [<CommonParameters>]
+ [-UseNewEnvironment] [-DisableInheritance] [-Wait] [-PassThru] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ### CommandLine
@@ -25,7 +26,8 @@ Start-ProcessEx [-FilePath] <String> [-ArgumentList <String[]>] [-WorkingDirecto
 Start-ProcessEx -CommandLine <String> [-ApplicationName <String>] [-WorkingDirectory <String>]
  [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>] [-ProcessAttribute <SecurityAttributes>]
  [-ThreadAttribute <SecurityAttributes>] [-Environment <IDictionary>] [-Token <SafeHandle>]
- [-UseNewEnvironment] [-DisableInheritance] [-Wait] [-PassThru] [<CommonParameters>]
+ [-UseNewEnvironment] [-DisableInheritance] [-Wait] [-PassThru] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -217,6 +219,21 @@ Set the security descriptor and inheritbility of the new process handle.
 Type: SecurityAttributes
 Parameter Sets: (All)
 Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
 
 Required: False
 Position: Named

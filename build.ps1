@@ -1,3 +1,8 @@
+using namespace System.IO
+using namespace System.Runtime.InteropServices
+
+#Requires -Version 7.2
+
 [CmdletBinding()]
 param(
     [Parameter()]
@@ -6,102 +11,80 @@ param(
     $Configuration = 'Debug',
 
     [Parameter()]
+    [ValidateSet('Build', 'Test')]
     [string]
     $Task = 'Build',
+
+    [Parameter()]
+    [Version]
+    $PowerShellVersion = $PSVersionTable.PSVersion,
+
+    [Parameter()]
+    [Architecture]
+    $PowerShellArch = [RuntimeInformation]::ProcessArchitecture,
+
+    [Parameter()]
+    [string]
+    $ModuleNupkg,
 
     [Parameter()]
     [Switch]
     $Elevated
 )
 
-end {
-    if ($PSEdition -eq 'Desktop') {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 'Tls12'
+$ErrorActionPreference = 'Stop'
+
+. ([Path]::Combine($PSScriptRoot, "tools", "common.ps1"))
+
+$manifestPath = ([Path]::Combine($PSScriptRoot, 'manifest.psd1'))
+$Manifest = [Manifest]::new($Configuration, $PowerShellVersion, $PowerShellArch, $manifestPath)
+
+if ($ModuleNupkg) {
+    Write-Host "Expanding module nupkg to '$($Manifest.ReleasePath)'" -ForegroundColor Cyan
+    Expand-Nupkg -Path $ModuleNupkg -DestinationPath $Manifest.ReleasePath
+}
+
+Write-Host "Installing PowerShell dependencies" -ForegroundColor Cyan
+$deps = $Task -eq 'Build' ? $Manifest.BuildRequirements : $Manifest.TestRequirements
+$deps | Install-BuildDependencies
+
+if ($Elevated) {
+    # To avoid the parent runner locking these files on build, copy them to a temporary location.
+    $moduleSource = [Path]::Combine($PSScriptRoot, "output", "ProcessEx")
+    $tempModulePath = [Path]::Combine($PSScriptRoot, "output", "Modules", "ProcessEx")
+    if ((Test-Path -LiteralPath $moduleSource) -and (Test-Path -LiteralPath $tempModulePath)) {
+        Remove-Item -LiteralPath $tempModulePath -Recurse -Force
     }
 
-    $modulePath = [IO.Path]::Combine($PSScriptRoot, 'tools', 'Modules')
-    $requirements = Import-PowerShellDataFile ([IO.Path]::Combine($PSScriptRoot, 'requirements-dev.psd1'))
-    foreach ($req in $requirements.GetEnumerator()) {
-        $targetPath = [IO.Path]::Combine($modulePath, $req.Key)
-
-        if (Test-Path -LiteralPath $targetPath) {
-            try {
-                Import-Module -Name $targetPath -Force -ErrorAction Stop
-            }
-            catch {
-                if ($req.Key -ne 'OpenAuthenticode') {
-                    throw
-                }
-            }
-            continue
-        }
-
-        Write-Host "Installing build pre-req $($req.Key) as it is not installed"
-        New-Item -Path $targetPath -ItemType Directory | Out-Null
-
-        $webParams = @{
-            Uri = "https://www.powershellgallery.com/api/v2/package/$($req.Key)/$($req.Value)"
-            OutFile = [IO.Path]::Combine($modulePath, "$($req.Key).zip")  # WinPS requires the .zip extension to extract
-            UseBasicParsing = $true
-        }
-        if ('Authentication' -in (Get-Command -Name Invoke-WebRequest).Parameters.Keys) {
-            $webParams.Authentication = 'None'
-        }
-
-        $oldProgress = $ProgressPreference
-        $ProgressPreference = 'SilentlyContinue'
-        try {
-            Invoke-WebRequest @webParams
-            Expand-Archive -Path $webParams.OutFile -DestinationPath $targetPath -Force
-            Remove-Item -LiteralPath $webParams.OutFile -Force
-        }
-        finally {
-            $ProgressPreference = $oldProgress
-        }
-
-        try {
-            Import-Module -Name $targetPath -Force -ErrorAction Stop
-        }
-        catch {
-            if ($req.Key -ne 'OpenAuthenticode') {
-                throw
-            }
-        }
-
+    if (-not (Test-Path -Literal $moduleSource)) {
+        throw "Cannot elevate build runner without building project first"
     }
+    Copy-Item -LiteralPath $moduleSource -Destination $tempModulePath -Recurse
+    Import-Module -Name $tempModulePath
+    Import-Module -Name ([Path]::Combine($PSScriptRoot, "output", "Modules", "PSPrivilege"))
 
-    if ($Elevated) {
-        # To avoid the parent runner locking these files on build, copy them to a temporary location.
-        $moduleSource = [IO.Path]::Combine($PSScriptRoot, "output", "ProcessEx")
-        $tempModulePath = [IO.Path]::Combine($PSScriptRoot, "tools", "Modules", "ProcessEx")
-        if ((Test-Path -Path $moduleSource) -and (Test-Path -Path $tempModulePath)) {
-            Remove-Item -Path $tempModulePath -Recurse -Force
+    $elevatedArguments = @(
+        '-File', $PSCommandPath,
+        '-Configuration', $Configuration
+        '-Task', $Task
+        '-PowerShellVersion', $PowerShellVersion
+        '-PowerShellArch', $PowerShellArch
+        if ($ModuleNupkg) {
+            '-ModuleNupkg', $ModuleNupkg
         }
-
-        if (-not (Test-Path $moduleSource)) {
-            throw "Cannot elevate build runner without building project first"
-        }
-        Copy-Item -Path $moduleSource -Destination $tempModulePath -Recurse
-        Import-Module -Name $tempModulePath
-
-        $invokeSubProcessBuildSplat = @{
-            Executable = (Get-Process -Id $pid).Path
-            ArgumentList = "-File", $PSCommandPath, "-Configuration", $Configuration, "-Task", $Task
-        }
-        ./tools/ElevatePrivileges.ps1 @invokeSubProcessBuildSplat
+    )
+    $invokeSubProcessBuildSplat = @{
+        Executable = (Get-Process -Id $pid).Path
+        ArgumentList = $elevatedArguments
     }
-    else {
-        $dotnetTools = @(dotnet tool list --global) -join "`n"
-        if (-not $dotnetTools.Contains('coverlet.console')) {
-            Write-Host 'Installing dotnet tool coverlet.console'
-            dotnet tool install --global coverlet.console
-        }
-
-        $invokeBuildSplat = @{
-            Task = $Task
-            File = (Get-Item ([IO.Path]::Combine($PSScriptRoot, '*.build.ps1'))).FullName
-            Configuration = $Configuration
-        }
-        Invoke-Build @invokeBuildSplat
+    ./tools/ElevatePrivileges.ps1 @invokeSubProcessBuildSplat
+}
+else {
+    $buildScript = [Path]::Combine($PSScriptRoot, "tools", "InvokeBuild.ps1")
+    $invokeBuildSplat = @{
+        Task = $Task
+        File = $buildScript
+        Manifest = $manifest
     }
+    Invoke-Build @invokeBuildSplat
 }

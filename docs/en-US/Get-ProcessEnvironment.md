@@ -13,7 +13,8 @@ Get the environment variables of a process.
 ## SYNTAX
 
 ```
-Get-ProcessEnvironment [[-Process] <ProcessIntString[]>] [<CommonParameters>]
+Get-ProcessEnvironment [[-Process] <ProcessIntString[]>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -51,6 +52,21 @@ Required: False
 Position: 0
 Default value: None
 Accept pipeline input: True (ByPropertyName, ByValue)
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 

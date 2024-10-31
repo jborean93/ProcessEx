@@ -18,7 +18,7 @@ New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] 
  [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
  [-Reserved <String>] [-Reserved2 <Byte[]>] [-StandardInput <SafeHandle>] [-StandardOutput <SafeHandle>]
  [-StandardError <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-JobList <SafeHandle[]>]
- [-ParentProcess <ProcessIntString>] [<CommonParameters>]
+ [-ParentProcess <ProcessIntString>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ConPTY
@@ -26,7 +26,8 @@ New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] 
 New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
  [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
  [-Reserved <String>] [-Reserved2 <Byte[]>] [-ConPTY <SafeHandle>] [-InheritedHandle <SafeHandle[]>]
- [-JobList <SafeHandle[]>] [-ParentProcess <ProcessIntString>] [<CommonParameters>]
+ [-JobList <SafeHandle[]>] [-ParentProcess <ProcessIntString>] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -239,6 +240,21 @@ The window position with X being the horizontal offset and Y being the vertical 
 Type: Coordinates
 Parameter Sets: (All)
 Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
 
 Required: False
 Position: Named

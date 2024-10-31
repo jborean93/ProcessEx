@@ -13,7 +13,7 @@ Get environment block for a user token.
 ## SYNTAX
 
 ```
-Get-TokenEnvironment [[-Token] <SafeHandle[]>] [<CommonParameters>]
+Get-TokenEnvironment [[-Token] <SafeHandle[]>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -33,6 +33,21 @@ Gets the environment block that would be used with a process spawned with a user
 The code adds a new entry to the `PATH` env var which is then applied to the new process that is spawned.
 
 ## PARAMETERS
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
 
 ### -Token
 The access token that is used when building the environment variables.

@@ -16,28 +16,32 @@ Start a new process with credentials or a token.
 ```
 Start-ProcessWith [-FilePath] <String> [-ArgumentList <String[]>] -Credential <PSCredential>
  [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
- [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru] [<CommonParameters>]
+ [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### FilePathToken
 ```
 Start-ProcessWith [-FilePath] <String> [-ArgumentList <String[]>] -Token <SafeHandle>
  [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
- [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru] [<CommonParameters>]
+ [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### CommandLineCredential
 ```
 Start-ProcessWith -CommandLine <String> [-ApplicationName <String>] -Credential <PSCredential>
  [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
- [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru] [<CommonParameters>]
+ [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### CommandLineToken
 ```
 Start-ProcessWith -CommandLine <String> [-ApplicationName <String>] -Token <SafeHandle>
  [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
- [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru] [<CommonParameters>]
+ [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -279,6 +283,21 @@ Return the `ProcessInfo` object for the process that was started.
 Type: SwitchParameter
 Parameter Sets: (All)
 Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
 
 Required: False
 Position: Named

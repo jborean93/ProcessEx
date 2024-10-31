@@ -14,7 +14,7 @@ Copy a handle to the target process.
 
 ```
 Copy-HandleToProcess [-Process] <ProcessIntString> [[-Access] <Int32>] [-Inherit] [-OwnHandle]
- [-Handle] <SafeHandle[]> [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-Handle] <SafeHandle[]> [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -123,6 +123,21 @@ Aliases:
 
 Required: True
 Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ProgressAction
+New common parameter introduced in PowerShell 7.4.
+
+```yaml
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
+Required: False
+Position: Named
 Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
