@@ -574,10 +574,9 @@ Function New-ProcessExSession {
         $location = if ($WorkingDirectory) { $WorkingDirectory } else { $pwd.Path }
         [void]$ps.AddCommand("Set-Location").AddParameter("Path", $location).AddStatement()
 
-        $requirements = Import-PowerShellDataFile ([IO.Path]::Combine($PSScriptRoot, '..', 'requirements-dev.psd1'))
-        foreach ($req in $requirements.GetEnumerator()) {
-            $modulePath = [IO.Path]::Combine($PSScriptRoot, '..','tools', 'Modules', $req.Key)
-            [void]$ps.AddCommand("Import-Module").AddParameter("Name", $modulePath).AddStatement()
+        $testModulesPath = [IO.Path]::Combine($PSScriptRoot, '..','output', 'Modules')
+        Get-ChildItem -LiteralPath $testModulesPath -Exclude ProcessEx | ForEach-Object -Process {
+            [void]$ps.AddCommand("Import-Module").AddParameter("Name", $_.FullName).AddStatement()
         }
 
         [void]$ps.AddScript($PSCommandPath)
@@ -663,10 +662,9 @@ Function New-ProcessWithSession {
         $location = if ($WorkingDirectory) { $WorkingDirectory } else { $pwd.Path }
         [void]$ps.AddCommand("Set-Location").AddParameter("Path", $location).AddStatement()
 
-        $requirements = Import-PowerShellDataFile ([IO.Path]::Combine($PSScriptRoot, '..', 'requirements-dev.psd1'))
-        foreach ($req in $requirements.GetEnumerator()) {
-            $modulePath = [IO.Path]::Combine($PSScriptRoot, '..','tools', 'Modules', $req.Key)
-            [void]$ps.AddCommand("Import-Module").AddParameter("Name", $modulePath).AddStatement()
+        $testModulesPath = [IO.Path]::Combine($PSScriptRoot, '..','output', 'Modules')
+        Get-ChildItem -LiteralPath $testModulesPath -Exclude ProcessEx | ForEach-Object -Process {
+            [void]$ps.AddCommand("Import-Module").AddParameter("Name", $_.FullName).AddStatement()
         }
 
         [void]$ps.AddScript($PSCommandPath)
