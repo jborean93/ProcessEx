@@ -104,24 +104,17 @@ namespace ProcessEx.Commands
 
         protected override void ProcessRecord()
         {
+            string workingDirectory = string.IsNullOrWhiteSpace(WorkingDirectory)
+                ? SessionState.Path.CurrentFileSystemLocation.Path
+                : WorkingDirectory;
+
             if (ParameterSetName == "FilePathCredential" || ParameterSetName == "FilePathToken")
             {
-                try
-                {
-                    ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath);
-                }
-                catch (NullReferenceException) // No documentation on this exception.
-                {
-                    ApplicationName = FilePath;
-                }
-
+                ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath, workingDirectory);
                 List<string> commands = new List<string>() { ApplicationName };
                 commands.AddRange(ArgumentList);
                 CommandLine = String.Join(" ", commands.Select(a => ArgumentHelper.EscapeArgument(a)));
             }
-
-            if (String.IsNullOrWhiteSpace(WorkingDirectory))
-                WorkingDirectory = SessionState.Path.CurrentFileSystemLocation.Path;
 
             if (StartupInfo == null)
                 StartupInfo = new StartupInfo();
@@ -175,7 +168,7 @@ namespace ProcessEx.Commands
                 $"ApplicationName: {ApplicationName}",
                 $"CommandLine: {CommandLine}",
                 $"CreationFlags: {CreationFlags}",
-                $"WorkingDirectory: {WorkingDirectory}",
+                $"WorkingDirectory: {workingDirectory}",
                 $"LogonFlags: {logonFlags}",
             })));
 
@@ -185,21 +178,14 @@ namespace ProcessEx.Commands
                 if (Token != null)
                 {
                     info = ProcessRunner.CreateProcessWithToken(Token, logonFlags, ApplicationName, CommandLine,
-                        CreationFlags, Environment, WorkingDirectory, StartupInfo!);
+                        CreationFlags, Environment, workingDirectory, StartupInfo!);
                 }
                 else
                 {
-                    string username = Credential.UserName;
-                    string? domain = null;
-                    if (username.Contains("\\"))
-                    {
-                        string[] userSplit = username.Split(new char[1] { '\\' }, 2);
-                        domain = userSplit[0];
-                        username = userSplit[1];
-                    }
+                    (string username, string? domain) = CredentialHelper.SplitUserName(Credential.UserName);
 
                     info = ProcessRunner.CreateProcessWithLogon(username, domain, Credential.Password, logonFlags,
-                        ApplicationName, CommandLine, CreationFlags, Environment, WorkingDirectory, StartupInfo!);
+                        ApplicationName, CommandLine, CreationFlags, Environment, workingDirectory, StartupInfo!);
                 }
             }
             catch (NativeException e)

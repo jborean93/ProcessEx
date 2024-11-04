@@ -48,7 +48,7 @@ Describe "Get-ProcessEx" {
             $actual.ProcessId | Should -Be $proc.Id
             $actual.Id | Should -Be $proc.Id
             if ([Environment]::Is64BitProcess) {
-                $actual.Executable | Should -Be  $exePath
+                $actual.Executable | Should -Be $exePath
             }
             else {
                 $actual.Executable | Should -Be "C:\Windows\SysWow64\WindowsPowerShell\v1.0\powershell.exe"
@@ -100,7 +100,7 @@ Describe "Get-ProcessEx" {
 
             } -ArgumentList $cmdLine, $pwshNative
 
-            $actual.Executable | Should -Be  $pwshNative
+            $actual.Executable | Should -Be $pwshNative
             $actual.CommandLine | Should -Be $cmdLine
             $actual.WorkingDirectory | Should -Be "C:\Windows\TEMP\"
             $actual.Environment.Count | Should -Be 2
@@ -140,7 +140,7 @@ Describe "Get-ProcessEx" {
 
             } -ArgumentList $cmdLine, $pwsh32
 
-            $actual.Executable | Should -Be  $pwsh32
+            $actual.Executable | Should -Be $pwsh32
             $actual.CommandLine | Should -Be $cmdLine
             $actual.WorkingDirectory | Should -Be "C:\Windows\TEMP\"
             $actual.Environment.Count | Should -Be 2
@@ -229,6 +229,69 @@ Describe "Get-ProcessEx" {
         }
         finally {
             $session | Remove-ProcessExSession
+        }
+    }
+
+    It "Completes process by current id" {
+        $actual = Complete "Get-ProcessEx -Process $pid"
+        $actual.CompletionText | Should -Be $pid
+        $actual.ListItemText | Should -Be "${pid}: Current Process"
+    }
+
+    It "Completes process by other process id with full match <FullMatch>" -TestCases @(
+        @{ FullMatch = $false }
+        @{ FullMatch = $true }
+    ) {
+        param ($FullMatch)
+
+        $id = [Guid]::NewGuid().Guid
+        $si = New-StartupInfo -WindowStyle Hide
+        $proc = Start-ProcessEx -FilePath pwsh.exe -ArgumentList '-NoExit', '-Command', "'$id'" -PassThru -StartupInfo $si
+        try {
+            $completionText = $proc.Id.ToString()
+            if (-not $FullMatch) {
+                $completionText.Substring(0, 2)
+            }
+
+            $actual = Complete "Get-ProcessEx -Process $completionText"
+            $res = $actual | Where-Object CompletionText -EQ $proc.Id
+
+            $res | Should -Not -BeNullOrEmpty
+            $res.CompletionText | Should -Be $proc.Id
+            $res.ListItemText | Should -Be "$($proc.Id): $($proc.Executable)"
+            $res.ToolTip | Should -Not -BeNullOrEmpty
+        }
+        finally {
+            $proc | Stop-Process -Force
+        }
+    }
+
+    It "Completes process by other process id with explicit access <Access>" -TestCases @(
+        @{ Access = '' }
+        @{ Access = '-Access Terminate' }
+        @{ Access = '-Access Invalid' }
+    ) {
+        param ($Access)
+
+        $id = [Guid]::NewGuid().Guid
+        $si = New-StartupInfo -WindowStyle Hide
+        $proc = Start-ProcessEx -FilePath pwsh.exe -ArgumentList '-NoExit', '-Command', "'$id'" -PassThru -StartupInfo $si
+        try {
+            $completionText = $proc.Id.ToString()
+            if (-not $FullMatch) {
+                $completionText.Substring(0, 2)
+            }
+
+            $actual = Complete "Get-ProcessEx $Access -Process $completionText"
+            $res = $actual | Where-Object CompletionText -EQ $proc.Id
+
+            $res | Should -Not -BeNullOrEmpty
+            $res.CompletionText | Should -Be $proc.Id
+            $res.ListItemText | Should -Be "$($proc.Id): $($proc.Executable)"
+            $res.ToolTip | Should -Not -BeNullOrEmpty
+        }
+        finally {
+            $proc | Stop-Process -Force
         }
     }
 }
@@ -342,6 +405,25 @@ Describe "Start-ProcessEx" {
         }
     }
 
+    It "Sets custom startupinfo reserved2 value" {
+        $si = New-StartupInfo -Reserved2 ([byte[]]@(0, 0, 0, 0))
+        $session = New-ProcessExSession -StartupInfo $si
+        try {
+            $actual = Invoke-Command -Session $session {
+                Get-StartupInfo
+            }
+        }
+        finally {
+            $session | Remove-ProcessExSession
+        }
+
+        $actual.Reserved2.Count | Should -Be 4
+        $actual.Reserved2[0] | Should -Be 0
+        $actual.Reserved2[1] | Should -Be 0
+        $actual.Reserved2[2] | Should -Be 0
+        $actual.Reserved2[3] | Should -Be 0
+    }
+
     It "Sets working directory" {
         $path = (Get-Item -LiteralPath $TestDrive).FullName
         $session = New-ProcessExSession -WorkingDirectory $path
@@ -390,7 +472,7 @@ Describe "Start-ProcessEx" {
         $proc = Start-ProcessEx -CommandLine $cmdLine -PassThru -CreationFlags Suspended
         try {
             if ([Environment]::Is64BitProcess) {
-                $proc.Executable | Should -Be  $pwshPath
+                $proc.Executable | Should -Be $pwshPath
             }
             else {
                 $proc.Executable | Should -Be "C:\Windows\SysWow64\WindowsPowerShell\v1.0\powershell.exe"
@@ -405,10 +487,10 @@ Describe "Start-ProcessEx" {
     It "Uses command line with custom executable" {
         $pwshPath = (Get-Command -Name powershell.exe -CommandType Application).Path
         $cmdLine = "pwsh.exe C:\Program Files\file\\"" KEY=""value test"" {""json"": ""value""}"
-        $proc = Start-ProcessEx -CommandLine $cmdLine -Applicationname $pwshPath -PassThru -CreationFlags Suspended
+        $proc = Start-ProcessEx -CommandLine $cmdLine -ApplicationName $pwshPath -PassThru -CreationFlags Suspended
         try {
             if ([Environment]::Is64BitProcess) {
-                $proc.Executable | Should -Be  $pwshPath
+                $proc.Executable | Should -Be $pwshPath
             }
             else {
                 $proc.Executable | Should -Be "C:\Windows\SysWow64\WindowsPowerShell\v1.0\powershell.exe"
@@ -1010,12 +1092,12 @@ Describe "Start-ProcessEx" {
             (Get-ProcessEx -Id $pid).Process,
             [System.Security.AccessControl.AccessControlSections]"Access, Group, Owner")
         $procSec.AddAccessRule($procSec.AccessRuleFactory(
-            [System.Security.Principal.SecurityIdentifier]::new("S-1-1-0"), # Everybody
-            [ProcessEx.Security.ProcessAccessRights]::AllAccess,
-            $false,
-            [System.Security.AccessControl.InheritanceFlags]::None,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow))
+                [System.Security.Principal.SecurityIdentifier]::new("S-1-1-0"), # Everybody
+                [ProcessEx.Security.ProcessAccessRights]::AllAccess,
+                $false,
+                [System.Security.AccessControl.InheritanceFlags]::None,
+                [System.Security.AccessControl.PropagationFlags]::None,
+                [System.Security.AccessControl.AccessControlType]::Allow))
         $procSDDL = $procSec.GetSecurityDescriptorSddlForm("Access, Group, Owner")
 
         $procAttributes = [ProcessEx.Security.SecurityAttributes]@{
@@ -1082,12 +1164,12 @@ Describe "Start-ProcessEx" {
             [ProcessExTests.Native]::GetCurrentThread(),
             [System.Security.AccessControl.AccessControlSections]"Access, Group, Owner")
         $threadSec.AddAccessRule($threadSec.AccessRuleFactory(
-            [System.Security.Principal.SecurityIdentifier]::new("S-1-1-0"), # Everybody
-            [ProcessEx.Security.ThreadAccessRights]::AllAccess,
-            $false,
-            [System.Security.AccessControl.InheritanceFlags]::None,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow))
+                [System.Security.Principal.SecurityIdentifier]::new("S-1-1-0"), # Everybody
+                [ProcessEx.Security.ThreadAccessRights]::AllAccess,
+                $false,
+                [System.Security.AccessControl.InheritanceFlags]::None,
+                [System.Security.AccessControl.PropagationFlags]::None,
+                [System.Security.AccessControl.AccessControlType]::Allow))
         $threadSDDL = $threadSec.GetSecurityDescriptorSddlForm("Access, Group, Owner")
 
         $procAttributes = [ProcessEx.Security.SecurityAttributes]@{
@@ -1201,11 +1283,11 @@ Describe "Start-ProcessEx with Token" -Skip:(Get-ProcessPrivilege -Name SeAssign
         ([IO.Path]::GettempPath()), 'C:\Windows\TEMP' | ForEach-Object {
             $acl = Get-Acl -LiteralPath $_
             $acl.AddAccessRule($acl.AccessRuleFactory($user,
-                [System.Security.AccessControl.FileSystemRights]::FullControl,
-                $false,
-                [System.Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
-                [System.Security.AccessControl.PropagationFlags]::None,
-                [System.Security.AccessControl.AccessControlType]::Allow))
+                    [System.Security.AccessControl.FileSystemRights]::FullControl,
+                    $false,
+                    [System.Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
+                    [System.Security.AccessControl.PropagationFlags]::None,
+                    [System.Security.AccessControl.AccessControlType]::Allow))
             Set-Acl -LiteralPath $_ -AclObject $acl
         }
 
@@ -1315,7 +1397,7 @@ Describe "Start-ProcessEx with Token" -Skip:(Get-ProcessPrivilege -Name SeAssign
         $systemName = $systemSid.Translate([System.Security.Principal.NTAccount]).Value
         $sessionid = Get-TokenSessionid -Token (Get-ProcessToken -Process $pid -Access Query)
 
-        $actual = Get-Process -IncludeUserName | Where-Object UserName -eq $systemName | ForEach-Object {
+        $actual = Get-Process -IncludeUserName | Where-Object UserName -EQ $systemName | ForEach-Object {
             $systemToken = Get-ProcessToken -Process $_ -Access Duplicate, Impersonate, Query -ErrorAction SilentlyContinue
             if (-not $systemToken) { return }
 
@@ -1963,12 +2045,12 @@ Describe "Start-ProcessEx with Token" -Skip:(Get-ProcessPrivilege -Name SeAssign
             (Get-ProcessEx -Id $pid).Process,
             [System.Security.AccessControl.AccessControlSections]"Access, Group, Owner")
         $procSec.AddAccessRule($procSec.AccessRuleFactory(
-            [System.Security.Principal.SecurityIdentifier]::new("S-1-1-0"), # Everybody
-            [ProcessEx.Security.ProcessAccessRights]::AllAccess,
-            $false,
-            [System.Security.AccessControl.InheritanceFlags]::None,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow))
+                [System.Security.Principal.SecurityIdentifier]::new("S-1-1-0"), # Everybody
+                [ProcessEx.Security.ProcessAccessRights]::AllAccess,
+                $false,
+                [System.Security.AccessControl.InheritanceFlags]::None,
+                [System.Security.AccessControl.PropagationFlags]::None,
+                [System.Security.AccessControl.AccessControlType]::Allow))
         $procSDDL = $procSec.GetSecurityDescriptorSddlForm("Access, Group, Owner")
 
         $procAttributes = [ProcessEx.Security.SecurityAttributes]@{

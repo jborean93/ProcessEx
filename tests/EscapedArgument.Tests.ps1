@@ -26,4 +26,34 @@ Describe "ConvertTo-EscapedArgument" {
         $actual = ($ArgumentList | ConvertTo-EscapedArgument) -join ' '
         $actual | Should -Be $Expected
     }
+
+    It "Escapes <Argument> argument correctly using MSI" -TestCases @(
+        @{ Argument = 'FOO'; Expected = 'FOO' }
+        @{ Argument = 'A=value'; Expected = 'A=value' }
+        @{ Argument = 'B='; Expected = 'B=""' }
+        @{ Argument = 'C=""'; Expected = 'C=""""""' }
+        @{ Argument = 'D=value with space'; Expected = 'D="value with space"' }
+        @{ Argument = 'E=value with "quotes" and spaces'; Expected = 'E="value with ""quotes"" and spaces"' }
+        @{ Argument = '1F=invalid prop wont be escaped on MSI rules'; Expected = '"1F=invalid prop wont be escaped on MSI rules"' }
+        @{ Argument = 'C:\path with space'; Expected = '"C:\path with space"' }
+        @{ Argument = 'F_.1=value with space'; Expected = 'F_.1="value with space"' }
+        @{ Argument = '_F.1=value with space'; Expected = '_F.1="value with space"' }
+    ) {
+        param($Argument, $Expected)
+
+        $actual = ConvertTo-EscapedArgument -ArgumentEscaping Msi -InputObject $Argument
+        $actual | Should -Be $Expected
+    }
+
+    It "Escaped <Argument> argument correctly using Raw" -TestCases @(
+        @{ Argument = 'A'; Expected = 'A' }
+        @{ Argument = 'A B'; Expected = 'A B' }
+        @{ Argument = '"A B"'; Expected = '"A B"' }
+        @{ Argument = 'A \"Test\" B'; Expected = 'A \"Test\" B' }
+    ) {
+        param($Argument, $Expected)
+
+        $actual = ConvertTo-EscapedArgument -ArgumentEscaping Raw -InputObject $Argument
+        $actual | Should -Be $Expected
+    }
 }

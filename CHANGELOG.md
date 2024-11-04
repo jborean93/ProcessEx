@@ -2,6 +2,9 @@
 
 ## v0.4.0 - TBD
 
+* Added `Invoke-ProcessWith` and `Invoke-ProcessEx` to invoke a process and capture the output like a normal call operator
+* Added `-ArgumentEscaping` to `ConvertTo-EscapedArgument` with the ability to escape MSI style properties
+
 ## v0.3.0 - 2023-02-15
 
 * Added `JobList` to `New-StartupInfo`

@@ -106,4 +106,43 @@ Describe "Copy-HandleToProcess" {
         $err.Count | Should -Be 1
         [string]$err[0] | Should -BeLike "Failed to duplicate handle *"
     }
+
+    It "Completes process by current id" {
+        $actual = Complete "Copy-HandleToProcess -Process $pid"
+        $actual.CompletionText | Should -Be $pid
+        $actual.ListItemText | Should -Be "${pid}: Current Process"
+    }
+
+    It "Completes process by other process id with full match <FullMatch>" -TestCases @(
+        @{ FullMatch = $false }
+        @{ FullMatch = $true }
+    ) {
+        param ($FullMatch)
+
+        $id = [Guid]::NewGuid().Guid
+        $si = New-StartupInfo -WindowStyle Hide
+        $proc = Start-ProcessEx -FilePath pwsh.exe -ArgumentList '-NoExit', '-Command', "'$id'" -PassThru -StartupInfo $si
+        try {
+            $completionText = $proc.Id.ToString()
+            if (-not $FullMatch) {
+                $completionText.Substring(0, 2)
+            }
+
+            $actual = Complete "Copy-HandleToProcess -Process $completionText"
+            $res = $actual | Where-Object CompletionText -EQ $proc.Id
+
+            $res | Should -Not -BeNullOrEmpty
+            $res.CompletionText | Should -Be $proc.Id
+            $res.ListItemText | Should -Be "$($proc.Id): $($proc.Executable)"
+            $res.ToolTip | Should -Not -BeNullOrEmpty
+        }
+        finally {
+            $proc | Stop-Process -Force
+        }
+    }
+
+    It "Fails to complete process with no access" {
+        $actual = Complete 'Copy-HandleToProcess -Process 4' | Where-Object CompletionText -EQ 4
+        $actual | Should -BeNullOrEmpty
+    }
 }

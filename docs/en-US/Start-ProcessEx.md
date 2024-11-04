@@ -33,6 +33,8 @@ Start-ProcessEx -CommandLine <String> [-ApplicationName <String>] [-WorkingDirec
 ## DESCRIPTION
 Like `Start-Process` but exposes a few more low level options and focuses specifically on the Win32 API `CreateProcess` or `CreateProcessAsUser` when `-Token` is specified.
 
+Use [Invoke-ProcessEx](./Invoke-ProcessEx.md) to run a process and capture the output inline.
+
 ## EXAMPLES
 
 ### Example 1: Start a new console process
