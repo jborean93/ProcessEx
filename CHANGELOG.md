@@ -1,6 +1,6 @@
 # Changelog for ProcessEx
 
-## v0.4.0 - TBD
+## v0.4.0 - 2024-11-07
 
 * Added `Invoke-ProcessWith` and `Invoke-ProcessEx` to invoke a process and capture the output like a normal call operator
 * Added `-ArgumentEscaping` to `ConvertTo-EscapedArgument` with the ability to escape MSI style properties
