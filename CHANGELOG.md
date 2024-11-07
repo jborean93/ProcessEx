@@ -4,6 +4,7 @@
 
 * Added `Invoke-ProcessWith` and `Invoke-ProcessEx` to invoke a process and capture the output like a normal call operator
 * Added `-ArgumentEscaping` to `ConvertTo-EscapedArgument` with the ability to escape MSI style properties
+* Added `New-StartupInfo -ChildProcessPolicy` to control the child process creation policy as an extended startupinfo attribute
 
 ## v0.3.0 - 2023-02-15
 

@@ -630,6 +630,12 @@ Describe "Invoke-ProcessEx" {
         }
     }
 
+    It "Invokes with restricted child process policy" {
+        $si = New-StartupInfo -ChildProcessPolicy Restricted
+        $out = Invoke-ProcessEx powershell.exe '-Command' 'whoami.exe' -StartupInfo $si -RedirectStderr Output -Raw
+        $out | Should -BeLike '*The process creation has been blocked*'
+    }
+
     It "Fails with invalid encoding type" {
         $ex = { Invoke-ProcessEx whoami -OutputEncoding $true } | Should -Throw -PassThru
         [string]$ex | Should -BeLike "*Could not convert input 'True' to a valid Encoding object*"

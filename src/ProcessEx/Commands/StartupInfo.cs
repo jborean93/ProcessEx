@@ -3,174 +3,177 @@ using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Runtime.InteropServices;
 
-namespace ProcessEx.Commands
+namespace ProcessEx.Commands;
+
+[Cmdlet(
+    VerbsCommon.Get, "StartupInfo"
+)]
+[OutputType(typeof(StartupInfo))]
+public class GetStartupInfo : PSCmdlet
 {
-    [Cmdlet(
-        VerbsCommon.Get, "StartupInfo"
-    )]
-    [OutputType(typeof(StartupInfo))]
-    public class GetStartupInfo : PSCmdlet
+    protected override void ProcessRecord()
     {
-        protected override void ProcessRecord()
+        Native.Helpers.STARTUPINFOW si = Native.Kernel32.GetStartupInfo();
+        byte[] reserved2 = Array.Empty<byte>();
+        if (si.cbReserved2 > 0)
         {
-            Native.Helpers.STARTUPINFOW si = Native.Kernel32.GetStartupInfo();
-            byte[] reserved2 = Array.Empty<byte>();
-            if (si.cbReserved2 > 0)
-            {
-                reserved2 = new byte[si.cbReserved2];
-                Marshal.Copy(si.lpReserved2, reserved2, 0, reserved2.Length);
-            }
-
-            WriteObject(new StartupInfo()
-            {
-                Desktop = Marshal.PtrToStringUni(si.lpDesktop) ?? "",
-                Title = Marshal.PtrToStringUni(si.lpTitle) ?? "",
-                Position = new Coordinates(si.dwX, si.dwY),
-                WindowSize = new Size(si.dwXSize, si.dwYSize),
-                CountChars = new Size(si.dwXCountChars, si.dwYCountChars),
-                FillAttribute = si.dwFillAttribute,
-                Flags = si.dwFlags,
-                ShowWindow = si.wShowWindow,
-                Reserved = Marshal.PtrToStringUni(si.lpReserved) ?? "",
-                Reserved2 = reserved2,
-                StandardInput = new Native.SafeNativeHandle(si.hStdInput, false),
-                StandardOutput = new Native.SafeNativeHandle(si.hStdOutput, false),
-                StandardError = new Native.SafeNativeHandle(si.hStdError, false),
-            });
+            reserved2 = new byte[si.cbReserved2];
+            Marshal.Copy(si.lpReserved2, reserved2, 0, reserved2.Length);
         }
+
+        WriteObject(new StartupInfo()
+        {
+            Desktop = Marshal.PtrToStringUni(si.lpDesktop) ?? "",
+            Title = Marshal.PtrToStringUni(si.lpTitle) ?? "",
+            Position = new Coordinates(si.dwX, si.dwY),
+            WindowSize = new Size(si.dwXSize, si.dwYSize),
+            CountChars = new Size(si.dwXCountChars, si.dwYCountChars),
+            FillAttribute = si.dwFillAttribute,
+            Flags = si.dwFlags,
+            ShowWindow = si.wShowWindow,
+            Reserved = Marshal.PtrToStringUni(si.lpReserved) ?? "",
+            Reserved2 = reserved2,
+            StandardInput = new Native.SafeNativeHandle(si.hStdInput, false),
+            StandardOutput = new Native.SafeNativeHandle(si.hStdOutput, false),
+            StandardError = new Native.SafeNativeHandle(si.hStdError, false),
+        });
     }
+}
 
-    [Cmdlet(
-        VerbsCommon.New, "StartupInfo",
-        DefaultParameterSetName = "STDIO"
+[Cmdlet(
+    VerbsCommon.New, "StartupInfo",
+    DefaultParameterSetName = "STDIO"
+)]
+[OutputType(typeof(StartupInfo))]
+public class NewStartupInfo : PSCmdlet
+{
+    [Parameter()]
+    [ValidateNotNull]
+    public string Desktop = "";
+
+    [Parameter()]
+    [ValidateNotNull]
+    public string Title = "";
+
+    [Parameter()]
+    public Coordinates? Position;
+
+    [Parameter()]
+    public Size? WindowSize;
+
+    [Parameter()]
+    public Size? CountChars;
+
+    [Parameter()]
+    public ConsoleFill FillAttribute = ConsoleFill.None;
+
+    [Parameter()]
+    public StartupInfoFlags Flags = StartupInfoFlags.None;
+
+    [Parameter()]
+    public WindowStyle WindowStyle = WindowStyle.ShowDefault;
+
+    [Parameter()]
+    public string Reserved = "";
+
+    [Parameter()]
+    public byte[] Reserved2 = Array.Empty<byte>();
+
+    [Parameter(
+        ParameterSetName = "STDIO"
     )]
-    [OutputType(typeof(StartupInfo))]
-    public class NewStartupInfo : PSCmdlet
+    public SafeHandle? StandardInput;
+
+    [Parameter(
+        ParameterSetName = "STDIO"
+    )]
+    public SafeHandle? StandardOutput;
+
+    [Parameter(
+        ParameterSetName = "STDIO"
+    )]
+    public SafeHandle? StandardError;
+
+    [Parameter(
+        ParameterSetName = "ConPTY"
+    )]
+    public SafeHandle? ConPTY;
+
+    [Parameter()]
+    public SafeHandle[] InheritedHandle = Array.Empty<SafeHandle>();
+
+    [Parameter()]
+    public SafeHandle[] JobList = Array.Empty<SafeHandle>();
+
+    [Parameter()]
+    [ArgumentCompleter(typeof(ProcessCompletor))]
+    public ProcessIntString? ParentProcess;
+
+    [Parameter]
+    public ChildProcessPolicy ChildProcessPolicy { get; set; } = ChildProcessPolicy.None;
+
+    protected override void ProcessRecord()
     {
-        [Parameter()]
-        [ValidateNotNull]
-        public string Desktop = "";
+        SafeHandle nullHandle = Native.Helpers.NULL_HANDLE_VALUE;
 
-        [Parameter()]
-        [ValidateNotNull]
-        public string Title = "";
+        if (Position != null)
+            Flags |= StartupInfoFlags.UsePosition;
 
-        [Parameter()]
-        public Coordinates? Position;
+        if (WindowSize != null)
+            Flags |= StartupInfoFlags.UseSize;
 
-        [Parameter()]
-        public Size? WindowSize;
+        if (CountChars != null)
+            Flags |= StartupInfoFlags.UseCountChars;
 
-        [Parameter()]
-        public Size? CountChars;
+        if (FillAttribute != ConsoleFill.None)
+            Flags |= StartupInfoFlags.UseFillAttribute;
 
-        [Parameter()]
-        public ConsoleFill FillAttribute = ConsoleFill.None;
+        if (WindowStyle != WindowStyle.ShowDefault)
+            Flags |= StartupInfoFlags.UseShowWindow;
 
-        [Parameter()]
-        public StartupInfoFlags Flags = StartupInfoFlags.None;
-
-        [Parameter()]
-        public WindowStyle WindowStyle = WindowStyle.ShowDefault;
-
-        [Parameter()]
-        public string Reserved = "";
-
-        [Parameter()]
-        public byte[] Reserved2 = Array.Empty<byte>();
-
-        [Parameter(
-            ParameterSetName = "STDIO"
-        )]
-        public SafeHandle? StandardInput;
-
-        [Parameter(
-            ParameterSetName = "STDIO"
-        )]
-        public SafeHandle? StandardOutput;
-
-        [Parameter(
-            ParameterSetName = "STDIO"
-        )]
-        public SafeHandle? StandardError;
-
-        [Parameter(
-            ParameterSetName = "ConPTY"
-        )]
-        public SafeHandle? ConPTY;
-
-        [Parameter()]
-        public SafeHandle[] InheritedHandle = Array.Empty<SafeHandle>();
-
-        [Parameter()]
-        public SafeHandle[] JobList = Array.Empty<SafeHandle>();
-
-        [Parameter()]
-        [ArgumentCompleter(typeof(ProcessCompletor))]
-        public ProcessIntString? ParentProcess;
-
-        protected override void ProcessRecord()
+        if (ParameterSetName == "STDIO")
         {
-            SafeHandle nullHandle = Native.Helpers.NULL_HANDLE_VALUE;
+            bool stdinSet = StandardInput != null && StandardInput.DangerousGetHandle() != IntPtr.Zero;
+            bool stdoutSet = StandardOutput != null && StandardOutput.DangerousGetHandle() != IntPtr.Zero;
+            bool stderrSet = StandardError != null && StandardError.DangerousGetHandle() != IntPtr.Zero;
 
-            if (Position != null)
-                Flags |= StartupInfoFlags.UsePosition;
-
-            if (WindowSize != null)
-                Flags |= StartupInfoFlags.UseSize;
-
-            if (CountChars != null)
-                Flags |= StartupInfoFlags.UseCountChars;
-
-            if (FillAttribute != ConsoleFill.None)
-                Flags |= StartupInfoFlags.UseFillAttribute;
-
-            if (WindowStyle != WindowStyle.ShowDefault)
-                Flags |= StartupInfoFlags.UseShowWindow;
-
-            if (ParameterSetName == "STDIO")
+            if ((Flags & StartupInfoFlags.UseHotKey) == StartupInfoFlags.UseHotKey)
             {
-                bool stdinSet = StandardInput != null && StandardInput.DangerousGetHandle() != IntPtr.Zero;
-                bool stdoutSet = StandardOutput != null && StandardOutput.DangerousGetHandle() != IntPtr.Zero;
-                bool stderrSet = StandardError != null && StandardError.DangerousGetHandle() != IntPtr.Zero;
-
-                if ((Flags & StartupInfoFlags.UseHotKey) == StartupInfoFlags.UseHotKey)
+                if (stdoutSet || stderrSet)
                 {
-                    if (stdoutSet || stderrSet)
-                    {
-                        ArgumentException ex = new ArgumentException(
-                            "Cannot set StandardOutput or StandardError with the flags UseHotKey");
-                        WriteError(new ErrorRecord(ex, "UseHotKeyWithStdio", ErrorCategory.InvalidArgument, null));
-                        return;
-                    }
-                }
-                else if (stdinSet || stdoutSet || stderrSet)
-                {
-                    Flags |= StartupInfoFlags.UseStdHandles;
+                    ArgumentException ex = new ArgumentException(
+                        "Cannot set StandardOutput or StandardError with the flags UseHotKey");
+                    WriteError(new ErrorRecord(ex, "UseHotKeyWithStdio", ErrorCategory.InvalidArgument, null));
+                    return;
                 }
             }
-
-            WriteObject(new StartupInfo()
+            else if (stdinSet || stdoutSet || stderrSet)
             {
-                Desktop = Desktop,
-                Title = Title,
-                Position = Position,
-                WindowSize = WindowSize,
-                CountChars = CountChars,
-                FillAttribute = FillAttribute,
-                Flags = Flags,
-                ShowWindow = WindowStyle,
-                Reserved = Reserved,
-                Reserved2 = Reserved2,
-                StandardInput = StandardInput ?? nullHandle,
-                StandardOutput = StandardOutput ?? nullHandle,
-                StandardError = StandardError ?? nullHandle,
-                ConPTY = ConPTY ?? nullHandle,
-                InheritedHandles = InheritedHandle,
-                JobList = JobList,
-                ParentProcess = ParentProcess?.ProcessId ?? 0,
-                ParentProcessHandle = ParentProcess?.ProcessHandle,
-            });
+                Flags |= StartupInfoFlags.UseStdHandles;
+            }
         }
+
+        WriteObject(new StartupInfo()
+        {
+            Desktop = Desktop,
+            Title = Title,
+            Position = Position,
+            WindowSize = WindowSize,
+            CountChars = CountChars,
+            FillAttribute = FillAttribute,
+            Flags = Flags,
+            ShowWindow = WindowStyle,
+            Reserved = Reserved,
+            Reserved2 = Reserved2,
+            StandardInput = StandardInput ?? nullHandle,
+            StandardOutput = StandardOutput ?? nullHandle,
+            StandardError = StandardError ?? nullHandle,
+            ConPTY = ConPTY ?? nullHandle,
+            InheritedHandles = InheritedHandle,
+            JobList = JobList,
+            ParentProcess = ParentProcess?.ProcessId ?? 0,
+            ParentProcessHandle = ParentProcess?.ProcessHandle,
+            ChildProcessPolicy = ChildProcessPolicy,
+        });
     }
 }
