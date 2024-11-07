@@ -75,6 +75,7 @@ namespace ProcessEx
         public SafeHandle[] InheritedHandles { get; set; } = [];
         public SafeHandle[] JobList { get; set; } = [];
         public int ParentProcess { get; set; } = 0;
+        public ChildProcessPolicy ChildProcessPolicy { get; set; } = ChildProcessPolicy.None;
 
         public StartupInfo Clone()
             => (StartupInfo)MemberwiseClone();
@@ -89,6 +90,30 @@ namespace ProcessEx
         {
             return ParentProcessHandle ?? Kernel32.OpenProcess(ParentProcess, access, false);
         }
+    }
+
+    [Flags]
+    public enum ChildProcessPolicy
+    {
+        /// <summary>
+        /// No child process policy is set.
+        /// </summary>
+        None = 0x0,
+        /// <summary>
+        /// PROCESS_CREATION_CHILD_PROCESS_RESTRICTED - The process being
+        /// created is not allowed to create child processes.
+        /// </summary>
+        Restricted = 0x1,
+        /// <summary>
+        /// PROCESS_CREATION_CHILD_PROCESS_OVERRIDE - The process being created
+        /// is allowed to create a child process if it would otherwise be
+        /// restricted.
+        /// </summary>
+        Override = 0x2,
+        /// <summary>
+        /// PROCESS_CREATION_CHILD_PROCESS_RESTRICTED_UNLESS_SECURE
+        /// </summary>
+        RestrictedUnlessSecure = 0x4,
     }
 
     [Flags]
@@ -907,6 +932,11 @@ namespace ProcessEx
             if (startupInfo.ConPTY.DangerousGetHandle() != IntPtr.Zero)
                 count++;
 
+            if (startupInfo.ChildProcessPolicy != ChildProcessPolicy.None)
+            {
+                count++;
+            }
+
             if (count == 0)
                 return Helpers.NULL_HANDLE_VALUE;
 
@@ -996,6 +1026,18 @@ namespace ProcessEx
 
                     Kernel32.UpdateProcThreadAttribute(attr,
                         Helpers.ProcessThreadAttribute.PROC_THREAD_ATTRIBUTE_JOB_LIST, val, (UIntPtr)valueSize);
+                }
+
+                if (startupInfo.ChildProcessPolicy != ChildProcessPolicy.None)
+                {
+                    SafeMemoryBuffer val = new SafeMemoryBuffer(4);
+                    attr.AddValue(val);
+
+                    Marshal.WriteInt32(val.DangerousGetHandle(), (int)startupInfo.ChildProcessPolicy);
+                    Kernel32.UpdateProcThreadAttribute(
+                        attr,
+                        Helpers.ProcessThreadAttribute.PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY, val,
+                        (UIntPtr)val.Length);
                 }
             }
             catch

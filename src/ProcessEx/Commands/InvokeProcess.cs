@@ -384,7 +384,7 @@ public abstract class InvokeProcessBase : PSCmdlet, IDisposable
         {
             WriteVerbose($"Setting {name} to output to the output stream with the encoding {encoding.HeaderName}.");
             StreamReader reader = new(_outputStream, encoding, false, 16384, true);
-            _outputTask = Task.Run(() => ReadStringStream(reader, _outData, Raw, false, _cancelTokenSource.Token));
+            _outputTask ??= Task.Run(() => ReadStringStream(reader, _outData, Raw, false, _cancelTokenSource.Token));
         }
 
         return _outputStream.ClientSafePipeHandle;
@@ -822,6 +822,7 @@ public sealed class InvokeProcessExCommand : InvokeProcessBase
         {
             _conPtyHandle?.Dispose();
         }
+        base.Dispose(disposing);
     }
 }
 
