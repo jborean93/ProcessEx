@@ -106,6 +106,7 @@ namespace ProcessEx.Commands
         public SafeHandle[] JobList = Array.Empty<SafeHandle>();
 
         [Parameter()]
+        [ArgumentCompleter(typeof(ProcessCompletor))]
         public ProcessIntString? ParentProcess;
 
         protected override void ProcessRecord()

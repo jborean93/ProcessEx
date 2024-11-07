@@ -54,7 +54,7 @@ namespace ProcessEx
         }
     }
 
-    public class StartupInfo
+    public class StartupInfo : ICloneable
     {
         public string Desktop { get; set; } = "";
         public string Title { get; set; } = "";
@@ -65,18 +65,25 @@ namespace ProcessEx
         public StartupInfoFlags Flags { get; set; }
         public WindowStyle ShowWindow { get; set; } = WindowStyle.ShowDefault;
         public string Reserved { get; set; } = "";
-        public byte[] Reserved2 { get; set; } = Array.Empty<byte>();
+        public byte[] Reserved2 { get; set; } = [];
         public SafeHandle StandardInput { get; set; } = Helpers.NULL_HANDLE_VALUE;
         public SafeHandle StandardOutput { get; set; } = Helpers.NULL_HANDLE_VALUE;
         public SafeHandle StandardError { get; set; } = Helpers.NULL_HANDLE_VALUE;
 
         // ProcThreadAttributes
         public SafeHandle ConPTY { get; set; } = Helpers.NULL_HANDLE_VALUE;
-        public SafeHandle[] InheritedHandles { get; set; } = Array.Empty<SafeHandle>();
-        public SafeHandle[] JobList { get; set; } = Array.Empty<SafeHandle>();
+        public SafeHandle[] InheritedHandles { get; set; } = [];
+        public SafeHandle[] JobList { get; set; } = [];
         public int ParentProcess { get; set; } = 0;
 
+        public StartupInfo Clone()
+            => (StartupInfo)MemberwiseClone();
+
+        object ICloneable.Clone()
+            => MemberwiseClone();
+
         internal SafeHandle? ParentProcessHandle { get; set; }
+        internal bool InheritStdioHandles { get; set; }
 
         internal SafeHandle OpenParentProcessHandle(ProcessAccessRights access)
         {
@@ -421,7 +428,8 @@ namespace ProcessEx
         UntrustedSource = 0x00008000,
     }
 
-    internal class ProcessCompletor : IArgumentCompleter {
+    internal class ProcessCompletor : IArgumentCompleter
+    {
         private readonly ProcessInfo _currentProc = ProcessInfo.GetCurrentProcess();
 
         public IEnumerable<CompletionResult> CompleteArgument(string commandName, string parameterName,
@@ -890,7 +898,7 @@ namespace ProcessEx
             if (startupInfo.ParentProcess != 0)
                 count++;
 
-            if (startupInfo.InheritedHandles.Length > 0)
+            if (startupInfo.InheritedHandles.Length > 0 || startupInfo.InheritStdioHandles)
                 count++;
 
             if (startupInfo.JobList.Length > 0)
@@ -926,7 +934,7 @@ namespace ProcessEx
                         new SafeNativeHandle(startupInfo.ConPTY.DangerousGetHandle(), false), (UIntPtr)IntPtr.Size);
                 }
 
-                if (startupInfo.InheritedHandles.Length > 0)
+                if (startupInfo.InheritedHandles.Length > 0 || startupInfo.InheritStdioHandles)
                 {
                     // We use a hashset so we don't duplicate handles which will cause a failure
                     HashSet<IntPtr> handles = new HashSet<IntPtr>();
@@ -1061,7 +1069,7 @@ namespace ProcessEx
         {
             try
             {
-                 return GetTokenLogonSid(token);
+                return GetTokenLogonSid(token);
             }
             catch (NativeException e) when (e.NativeErrorCode == (int)Win32ErrorCode.ERROR_NOT_FOUND)
             {
@@ -1086,7 +1094,7 @@ namespace ProcessEx
 
             unsafe
             {
-                return *(uint *)buffer.DangerousGetHandle();
+                return *(uint*)buffer.DangerousGetHandle();
             }
         }
 

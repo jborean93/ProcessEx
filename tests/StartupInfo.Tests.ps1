@@ -13,7 +13,7 @@ Describe "StartupInfo" {
     It "Gets startupinfo with custom properties" {
         $reserved2Bytes = [byte[]]@(0, 0, 0, 0) + @([Text.Encoding]::Unicode.GetBytes("test message"))
         $siParams = @{
-            Title =  "my title"
+            Title = "my title"
             Position = [System.Management.Automation.Host.Coordinates]::new(1, 2)
             WindowSize = [System.Management.Automation.Host.Size]::new(3, 4)
             CountChars = [System.Management.Automation.Host.Size]::new(10, 20)
@@ -62,6 +62,40 @@ Describe "StartupInfo" {
         }
         finally {
             $pipe.Dispose()
+        }
+    }
+
+    It "Completes process by current id" {
+        $actual = Complete "New-StartupInfo -ParentProcess $pid"
+        $actual.CompletionText | Should -Be $pid
+        $actual.ListItemText | Should -Be "${pid}: Current Process"
+    }
+
+    It "Completes process by other process id with full match <FullMatch>" -TestCases @(
+        @{ FullMatch = $false }
+        @{ FullMatch = $true }
+    ) {
+        param ($FullMatch)
+
+        $id = [Guid]::NewGuid().Guid
+        $si = New-StartupInfo -WindowStyle Hide
+        $proc = Start-ProcessEx -FilePath pwsh.exe -ArgumentList '-NoExit', '-Command', "'$id'" -PassThru -StartupInfo $si
+        try {
+            $completionText = $proc.Id.ToString()
+            if (-not $FullMatch) {
+                $completionText.Substring(0, 2)
+            }
+
+            $actual = Complete "New-StartupInfo -ParentProcess $completionText"
+            $res = $actual | Where-Object CompletionText -EQ $proc.Id
+
+            $res | Should -Not -BeNullOrEmpty
+            $res.CompletionText | Should -Be $proc.Id
+            $res.ListItemText | Should -Be "$($proc.Id): $($proc.Executable)"
+            $res.ToolTip | Should -Not -BeNullOrEmpty
+        }
+        finally {
+            $proc | Stop-Process -Force
         }
     }
 }

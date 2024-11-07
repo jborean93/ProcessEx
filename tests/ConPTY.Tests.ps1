@@ -18,29 +18,43 @@ Describe "ConPTY" {
     }
 
     It "Creates ConPTY for process" {
-        $fs = [IO.File]::Open($fsInPath, "Open", "Write", "ReadWrite")
-        $sw = [IO.StreamWriter]::new($fs)
-        $sw.WriteLine("echo 'hi' && exit 1")
-        $sw.Dispose()
+        $outputPipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("In", "Inheritable")
+        $inputPipe = [System.IO.Pipes.AnonymousPipeServerStream]::new("Out", "Inheritable")
 
         $ptyParams = @{
-            Width = 10
-            Height = 20
-            InputPipe = $fsIn.SafeFileHandle
-            OutputPipe = $fsOut.SafeFileHandle
+            Width = 80
+            Height = 80
+            InputPipe = $inputPipe.ClientSafePipeHandle
+            OutputPipe = $outputPipe.ClientSafePipeHandle
         }
         $pty = New-ConPTY @ptyParams
         try {
+            $outputPipe.DisposeLocalCopyOfClientHandle()
+            $inputPipe.DisposeLocalCopyOfClientHandle()
             $pty -is ([System.Runtime.InteropServices.SafeHandle]) | Should -Be $true
 
-            $si = New-StartupInfo -ConPTY $pty
+            $reader = [IO.StreamReader]::new($outputPipe)
+            $writer = [IO.StreamWriter]::new($inputPipe)
+            $writer.Write("echo 'hi' && exit 1`r`n")
+            $writer.Flush()
+
+            $si = New-StartupInfo -ConPTY $pty -Flags UseStdHandles
             $proc = Start-ProcessEx -FilePath cmd.exe -StartupInfo $si -Wait -PassThru
 
-            Get-Content -LiteralPath $fsOutPath -Raw | Should -Not -Be ""
+            $inputPipe.Dispose()
+            $inputPipe = $Null
+            $pty.Dispose()
+            $pty = $null
+
+            $out = $reader.ReadToEnd()
+
+            $out | Should -BeLike '*hi*'
             $proc.ExitCode | Should -Be 1
         }
         finally {
-            $pty.Dispose()
+            $outputPipe.Dispose()
+            if ($inputPipe) { $inputPipe.Dispose() }
+            if ($pty) { $pty.Dispose() }
         }
     }
 

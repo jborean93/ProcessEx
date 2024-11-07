@@ -54,7 +54,6 @@ namespace ProcessEx.Commands
             if (InheritCursor)
                 flags |= Native.Helpers.PseudoConsoleCreateFlags.PSEUDOCONSOLE_INHERIT_CURSOR;
 
-
             try
             {
                 WriteObject(Native.Kernel32.CreatePseudoConsole(size, InputPipe, OutputPipe, flags));

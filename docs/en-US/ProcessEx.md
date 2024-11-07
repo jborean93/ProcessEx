@@ -29,6 +29,12 @@ Get the startupinfo for the current process.
 ### [Get-TokenEnvironment](Get-TokenEnvironment.md)
 Get environment block for a user token.
 
+### [Invoke-ProcessEx](Invoke-ProcessEx.md)
+Invoke a process inline and capture the output like the call operator.
+
+### [Invoke-ProcessWith](Invoke-ProcessWith.md)
+Invoke a process inline and capture the output like the call operator with the ability to run as another user or token.
+
 ### [New-ConPTY](New-ConPTY.md)
 Create a new pseudo console object.
 

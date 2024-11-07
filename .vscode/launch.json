@@ -20,6 +20,21 @@
             "console": "externalTerminal",
         },
         {
+            "name": "Windows PowerShell launch",
+            "type": "clr",
+            "request": "launch",
+            "program": "powershell",
+            "args": [
+                "-NoExit",
+                "-NoProfile",
+                "-Command",
+                "Import-Module ./output/ProcessEx"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "externalTerminal",
+        },
+        {
             "name": "PowerShell Launch Current File",
             "type": "PowerShell",
             "request": "launch",

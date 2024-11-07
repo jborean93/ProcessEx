@@ -2,7 +2,9 @@ using Microsoft.Win32.SafeHandles;
 using ProcessEx.Security;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Text;
 
 namespace ProcessEx.Native
@@ -95,6 +97,23 @@ namespace ProcessEx.Native
             NONE = 0x0000000,
             DUPLICATE_CLOSE_SOURCE = 0x00000001,
             DUPLICATE_SAME_ACCESS = 0x00000002,
+        }
+
+        [Flags]
+        public enum FileFlags : uint
+        {
+            NONE = 0,
+            FILE_FLAG_OPEN_NO_RECALL = 0x00100000,
+            FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000,
+            FILE_FLAG_SESSION_AWARE = 0x00800000,
+            FILE_FLAG_POSIX_SEMANTICS = 0x01000000,
+            FILE_FLAG_BACKUP_SEMANTICS = 0x02000000,
+            FILE_FLAG_DELETE_ON_CLOSE = 0x04000000,
+            FILE_FLAG_SEQUENTIAL_SCAN = 0x08000000,
+            FILE_FLAG_RANDOM_ACCESS = 0x10000000,
+            FILE_FLAG_NO_BUFFERING = 0x20000000,
+            FILE_FLAG_OVERLAPPED = 0x40000000,
+            FILE_FLAG_WRITE_THROUGH = 0x80000000,
         }
 
         [Flags]
@@ -253,6 +272,41 @@ namespace ProcessEx.Native
         [DllImport("Kernel32.dll", SetLastError = true)]
         public static extern Int32 ClosePseudoConsole(
             IntPtr hPC);
+
+        [DllImport("Kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern SafeFileHandle CreateFileW(
+            [MarshalAs(UnmanagedType.LPWStr)] string lpFileName,
+            FileSystemRights dwDesiredAccess,
+            FileShare dwShareMode,
+            IntPtr lpSecurityAttributes,
+            FileMode dwCreationDisposition,
+            uint dwFlagsAndAttributes,
+            IntPtr hTemplateFile);
+
+        public static SafeFileHandle CreateFile(
+            string path,
+            FileSystemRights access,
+            FileShare share,
+            FileMode mode,
+            FileAttributes attributes,
+            Helpers.FileFlags flags)
+        {
+            uint flagsAndAttributes = (uint)attributes | (uint)flags;
+            SafeFileHandle handle = CreateFileW(
+                path,
+                access,
+                share,
+                IntPtr.Zero,
+                mode,
+                flagsAndAttributes,
+                IntPtr.Zero);
+            if (handle.IsInvalid)
+            {
+                throw new NativeException("CreateFileW", Marshal.GetLastWin32Error());
+            }
+
+            return handle;
+        }
 
         [DllImport("Kernel32.dll", EntryPoint = "CreateIoCompletionPort", SetLastError = true)]
         private static extern SafeNativeHandle NativeCreateIoCompletionPort(
@@ -637,6 +691,19 @@ namespace ProcessEx.Native
         {
             if (!NativeSetInformationJobObject(job, infoClass, info, infoLength))
                 throw new NativeException("SetInformationJobObject");
+        }
+
+        [DllImport("Kernel32.dll", EntryPoint = "TerminateProcess", SetLastError = true)]
+        private static extern bool NativeTerminateProcess(
+            SafeHandle hProcess,
+            int uExitCode);
+
+        public static void TerminateProcess(SafeHandle process, int exitCode)
+        {
+            if (!NativeTerminateProcess(process, exitCode))
+            {
+                throw new NativeException("TerminateProcess");
+            }
         }
 
         [DllImport("Kernel32.dll", EntryPoint = "UpdateProcThreadAttribute", SetLastError = true)]

@@ -1,6 +1,6 @@
 #Requires -Module PSPrivilege
 
-$moduleName   = (Get-Item ([IO.Path]::Combine($PSScriptRoot, '..', 'module', '*.psd1'))).BaseName
+$moduleName = (Get-Item ([IO.Path]::Combine($PSScriptRoot, '..', 'module', '*.psd1'))).BaseName
 $manifestPath = [IO.Path]::Combine($PSScriptRoot, '..', 'output', $moduleName)
 
 if (-not (Get-Module -Name $moduleName -ErrorAction SilentlyContinue)) {
@@ -574,7 +574,7 @@ Function New-ProcessExSession {
         $location = if ($WorkingDirectory) { $WorkingDirectory } else { $pwd.Path }
         [void]$ps.AddCommand("Set-Location").AddParameter("Path", $location).AddStatement()
 
-        $testModulesPath = [IO.Path]::Combine($PSScriptRoot, '..','output', 'Modules')
+        $testModulesPath = [IO.Path]::Combine($PSScriptRoot, '..', 'output', 'Modules')
         Get-ChildItem -LiteralPath $testModulesPath -Exclude ProcessEx | ForEach-Object -Process {
             [void]$ps.AddCommand("Import-Module").AddParameter("Name", $_.FullName).AddStatement()
         }
@@ -598,7 +598,7 @@ Function New-ProcessExSession {
 }
 
 Function New-ProcessWithSession {
-    [CmdletBinding(DefaultParameterSetName="Credential")]
+    [CmdletBinding(DefaultParameterSetName = "Credential")]
     param (
         [String]
         $FilePath = (Get-Process -Id $pid).Path,
@@ -662,7 +662,7 @@ Function New-ProcessWithSession {
         $location = if ($WorkingDirectory) { $WorkingDirectory } else { $pwd.Path }
         [void]$ps.AddCommand("Set-Location").AddParameter("Path", $location).AddStatement()
 
-        $testModulesPath = [IO.Path]::Combine($PSScriptRoot, '..','output', 'Modules')
+        $testModulesPath = [IO.Path]::Combine($PSScriptRoot, '..', 'output', 'Modules')
         Get-ChildItem -LiteralPath $testModulesPath -Exclude ProcessEx | ForEach-Object -Process {
             [void]$ps.AddCommand("Import-Module").AddParameter("Name", $_.FullName).AddStatement()
         }
@@ -851,7 +851,7 @@ Function Get-ElevatedToken {
         $elevatedToken = Get-Process |
             Get-ProcessToken -Access Duplicate, Impersonate, Query -ErrorAction SilentlyContinue |
             Get-TokenPrivilege |
-            Where-Object Name -eq "SeTcbPrivilege" |
+            Where-Object Name -EQ "SeTcbPrivilege" |
             ForEach-Object -Process {
                 [ProcessExTests.Native]::ImpersonateLoggedOnUser($_.Token)
                 try {
@@ -954,12 +954,12 @@ Function New-LocalAccount {
 
     if ($GroupMembership) {
         [string[]]$sidsToAdd = @($GroupMembership | ForEach-Object {
-            [System.Security.Principal.NTAccount]::new($_).Translate([System.Security.Principal.SecurityIdentifier]).Value
-        })
+                [System.Security.Principal.NTAccount]::new($_).Translate([System.Security.Principal.SecurityIdentifier]).Value
+            })
         [string[]]$existingSids = @($userAdsi.Groups() | ForEach-Object -Process {
-            $rawSid = $_.GetType().InvokeMember("ObjectSid", "GetProperty", $null, $_, $null)
-            [System.Security.Principal.SecurityIdentifier]::new($rawSid, 0).Value
-        })
+                $rawSid = $_.GetType().InvokeMember("ObjectSid", "GetProperty", $null, $_, $null)
+                [System.Security.Principal.SecurityIdentifier]::new($rawSid, 0).Value
+            })
         $toAdd = [Linq.Enumerable]::Except($sidsToAdd, $existingSids)
 
         foreach ($group in $toAdd) {
@@ -1001,4 +1001,19 @@ Function Remove-LocalAccount {
     } | ForEach-Object {
         $adsi.Delete("User", $_.Name.Value)
     }
+}
+
+Function Global:Complete {
+    [OutputType([System.Management.Automation.CompletionResult])]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position = 0)]
+        [string]
+        $Expression
+    )
+
+    [System.Management.Automation.CommandCompletion]::CompleteInput(
+        $Expression,
+        $Expression.Length,
+        $null).CompletionMatches
 }

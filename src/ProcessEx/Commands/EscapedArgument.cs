@@ -1,33 +1,35 @@
 using System.Management.Automation;
 
-namespace ProcessEx.Commands
+namespace ProcessEx.Commands;
+
+[Cmdlet(
+    VerbsData.ConvertTo, "EscapedArgument"
+)]
+[OutputType(typeof(string))]
+public class ConvertToEscapedArgument : PSCmdlet
 {
-    [Cmdlet(
-        VerbsData.ConvertTo, "EscapedArgument"
+    [Parameter(
+        Mandatory = true,
+        Position = 0,
+        ValueFromPipeline = true,
+        ValueFromPipelineByPropertyName = true
     )]
-    [OutputType(typeof(string))]
-    public class ConvertToEscapedArgument : PSCmdlet
+    [AllowEmptyString]
+    [AllowNull]
+    public string[]? InputObject;
+
+    [Parameter]
+    public ArgumentEscapingMode ArgumentEscaping { get; set; } = ArgumentEscapingMode.Standard;
+
+    protected override void ProcessRecord()
     {
-        [Parameter(
-            Mandatory = true,
-            Position = 0,
-            ValueFromPipeline = true,
-            ValueFromPipelineByPropertyName = true
-        )]
-        [AllowEmptyString]
-        [AllowNull]
-        public string[]? InputObject;
-
-        protected override void ProcessRecord()
+        if (InputObject == null || InputObject.Length == 0)
         {
-            if (InputObject == null || InputObject.Length == 0)
-            {
-                WriteObject(ArgumentHelper.EscapeArgument(null));
-                return;
-            }
-
-            foreach (string argument in InputObject)
-                WriteObject(ArgumentHelper.EscapeArgument(argument));
+            WriteObject(ArgumentHelper.EscapeArgument(null, ArgumentEscaping));
+            return;
         }
+
+        foreach (string argument in InputObject)
+            WriteObject(ArgumentHelper.EscapeArgument(argument, ArgumentEscaping));
     }
 }
