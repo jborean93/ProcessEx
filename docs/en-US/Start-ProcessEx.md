@@ -14,11 +14,11 @@ Start a new process.
 
 ### FilePath (Default)
 ```
-Start-ProcessEx [-FilePath] <String> [-ArgumentList <String[]>] [-WorkingDirectory <String>]
- [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>] [-ProcessAttribute <SecurityAttributes>]
- [-ThreadAttribute <SecurityAttributes>] [-Environment <IDictionary>] [-Token <SafeHandle>]
- [-UseNewEnvironment] [-DisableInheritance] [-Wait] [-PassThru] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Start-ProcessEx [-FilePath] <String> [-ArgumentList <String[]>] [-ArgumentEscaping <ArgumentEscapingMode>]
+ [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
+ [-ProcessAttribute <SecurityAttributes>] [-ThreadAttribute <SecurityAttributes>] [-Environment <IDictionary>]
+ [-Token <SafeHandle>] [-UseNewEnvironment] [-DisableInheritance] [-Wait] [-PassThru]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### CommandLine
@@ -90,6 +90,26 @@ Aliases:
 Required: False
 Position: Named
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ArgumentEscaping
+The argument escaping mode to use when building the values of `-ArgumentList` to the single command line string.
+The default `Standard` will escape the argument list according to the C style rules where whitespace is fully enclosed as a double quoted string.
+The `Raw` rule will ignore all escaping and just appeach each argument with a space.
+The `Msi` rule will quote the argument `FOO=value with space` as `FOO="value with space"`.
+
+See [ConvertTo-EscapedArgument](./ConvertTo-EscapedArgument.md) for more information.
+
+```yaml
+Type: ArgumentEscapingMode
+Parameter Sets: FilePath
+Aliases:
+
+Required: False
+Position: Named
+Default value: Standard
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

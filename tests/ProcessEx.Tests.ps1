@@ -22,6 +22,14 @@ Describe "Get-ProcessEx" {
         $actual.Process -is [System.Runtime.InteropServices.SafeHandle] | Should -Be $true
     }
 
+    It "Gets process using uint32 pid" {
+        [uint32]$procId = [Convert]::ToUInt32([Convert]::ToString($pid, 2), 2)
+        $actual = Get-ProcessEx -Id $procId
+        $actual -is [ProcessEx.ProcessInfo] | Should -Be $true
+        $actual.ProcessId | Should -Be $pid
+        $actual.Process -is [System.Runtime.InteropServices.SafeHandle] | Should -Be $true
+    }
+
     It "Gets process with Process" {
         $actual = Get-ProcessEx -Id (Get-Process -Id $pid)
         $actual -is [ProcessEx.ProcessInfo] | Should -Be $true

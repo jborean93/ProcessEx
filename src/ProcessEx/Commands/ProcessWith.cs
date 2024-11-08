@@ -38,6 +38,10 @@ namespace ProcessEx.Commands
         )]
         public string[] ArgumentList { get; set; } = Array.Empty<string>();
 
+        [Parameter(ParameterSetName = "FilePathCredential")]
+        [Parameter(ParameterSetName = "FilePathToken")]
+        public ArgumentEscapingMode ArgumentEscaping { get; set; } = ArgumentEscapingMode.Standard;
+
         [Parameter(
             Mandatory = true,
             ParameterSetName = "CommandLineCredential"
@@ -111,9 +115,8 @@ namespace ProcessEx.Commands
             if (ParameterSetName == "FilePathCredential" || ParameterSetName == "FilePathToken")
             {
                 ApplicationName = ArgumentHelper.ResolveExecutable(this, FilePath, workingDirectory);
-                List<string> commands = new List<string>() { ApplicationName };
-                commands.AddRange(ArgumentList);
-                CommandLine = String.Join(" ", commands.Select(a => ArgumentHelper.EscapeArgument(a)));
+                string[] commands = [ApplicationName, .. ArgumentList];
+                CommandLine = string.Join(" ", commands.Select(a => ArgumentHelper.EscapeArgument(a, ArgumentEscaping)));
             }
 
             if (StartupInfo == null)

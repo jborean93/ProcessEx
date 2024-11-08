@@ -23,6 +23,11 @@ namespace ProcessEx
 
         public ProcessIntString(int pid) => ProcessId = pid;
 
+        // We use unchecked to get the signed representation of the same bytes
+        // of the uint value.
+        public ProcessIntString(uint pid) : this(unchecked((int)pid))
+        { }
+
         public ProcessIntString(Process process)
         {
             ProcessId = process.Id;
