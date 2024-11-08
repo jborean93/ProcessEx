@@ -1,5 +1,10 @@
 # Changelog for ProcessEx
 
+## v0.5.0 - TBD
+
+* Added support for `ProcessIntString` parameters accepting `uint` values as returned by WMI/CIM calls
+* Added `-ArgumentEscaping` to `Start-ProcessWith` and `Start-ProcessEx`
+
 ## v0.4.0 - 2024-11-07
 
 * Added `Invoke-ProcessWith` and `Invoke-ProcessEx` to invoke a process and capture the output like a normal call operator

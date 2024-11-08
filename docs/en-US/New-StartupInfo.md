@@ -14,20 +14,21 @@ Create a StartupInfo object for creating a process.
 
 ### STDIO (Default)
 ```
-New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
- [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
- [-Reserved <String>] [-Reserved2 <Byte[]>] [-StandardInput <SafeHandle>] [-StandardOutput <SafeHandle>]
- [-StandardError <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-JobList <SafeHandle[]>]
- [-ParentProcess <ProcessIntString>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+New-StartupInfo [-ChildProcessPolicy <ChildProcessPolicy>] [-Desktop <String>] [-Title <String>]
+ [-Position <Coordinates>] [-WindowSize <Size>] [-CountChars <Size>] [-FillAttribute <ConsoleFill>]
+ [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>] [-Reserved <String>] [-Reserved2 <Byte[]>]
+ [-StandardInput <SafeHandle>] [-StandardOutput <SafeHandle>] [-StandardError <SafeHandle>]
+ [-InheritedHandle <SafeHandle[]>] [-JobList <SafeHandle[]>] [-ParentProcess <ProcessIntString>]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### ConPTY
 ```
-New-StartupInfo [-Desktop <String>] [-Title <String>] [-Position <Coordinates>] [-WindowSize <Size>]
- [-CountChars <Size>] [-FillAttribute <ConsoleFill>] [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>]
- [-Reserved <String>] [-Reserved2 <Byte[]>] [-ConPTY <SafeHandle>] [-InheritedHandle <SafeHandle[]>]
- [-JobList <SafeHandle[]>] [-ParentProcess <ProcessIntString>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+New-StartupInfo [-ChildProcessPolicy <ChildProcessPolicy>] [-Desktop <String>] [-Title <String>]
+ [-Position <Coordinates>] [-WindowSize <Size>] [-CountChars <Size>] [-FillAttribute <ConsoleFill>]
+ [-Flags <StartupInfoFlags>] [-WindowStyle <WindowStyle>] [-Reserved <String>] [-Reserved2 <Byte[]>]
+ [-ConPTY <SafeHandle>] [-InheritedHandle <SafeHandle[]>] [-JobList <SafeHandle[]>]
+ [-ParentProcess <ProcessIntString>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -94,6 +95,27 @@ These handles must exist in the parent process specified rather than the current
 To copy a handle in the current process to the new parent process, use `Copy-HandleToProcess`.
 
 ## PARAMETERS
+
+### -ChildProcessPolicy
+The child process policy to apply to the new process.
+This can be set to one of:
+
++ `None`
++ `Restricted` - The process cannot create child processes
++ `Override`
++ `RestrictedUnlessSecure` - The process cannot create child processes unless the child process is a secure process
+
+```yaml
+Type: ChildProcessPolicy
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
 
 ### -ConPTY
 The pseudo console handle that represents the console input and output pipelines.

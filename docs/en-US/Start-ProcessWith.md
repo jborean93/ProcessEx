@@ -14,16 +14,16 @@ Start a new process with credentials or a token.
 
 ### FilePathCredential (Default)
 ```
-Start-ProcessWith [-FilePath] <String> [-ArgumentList <String[]>] -Credential <PSCredential>
- [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
- [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Start-ProcessWith [-FilePath] <String> [-ArgumentList <String[]>] [-ArgumentEscaping <ArgumentEscapingMode>]
+ -Credential <PSCredential> [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>]
+ [-CreationFlags <CreationFlags>] [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait]
+ [-PassThru] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ### FilePathToken
 ```
-Start-ProcessWith [-FilePath] <String> [-ArgumentList <String[]>] -Token <SafeHandle>
- [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
+Start-ProcessWith [-FilePath] <String> [-ArgumentList <String[]>] [-ArgumentEscaping <ArgumentEscapingMode>]
+ -Token <SafeHandle> [-WorkingDirectory <String>] [-StartupInfo <StartupInfo>] [-CreationFlags <CreationFlags>]
  [-Environment <IDictionary>] [-WithProfile] [-NetCredentialsOnly] [-Wait] [-PassThru]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
@@ -145,6 +145,26 @@ Aliases:
 Required: False
 Position: Named
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ArgumentEscaping
+The argument escaping mode to use when building the values of `-ArgumentList` to the single command line string.
+The default `Standard` will escape the argument list according to the C style rules where whitespace is fully enclosed as a double quoted string.
+The `Raw` rule will ignore all escaping and just appeach each argument with a space.
+The `Msi` rule will quote the argument `FOO=value with space` as `FOO="value with space"`.
+
+See [ConvertTo-EscapedArgument](./ConvertTo-EscapedArgument.md) for more information.
+
+```yaml
+Type: ArgumentEscapingMode
+Parameter Sets: FilePathCredential, FilePathToken
+Aliases:
+
+Required: False
+Position: Named
+Default value: Standard
 Accept pipeline input: False
 Accept wildcard characters: False
 ```
