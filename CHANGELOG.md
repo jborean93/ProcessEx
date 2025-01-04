@@ -1,6 +1,6 @@
 # Changelog for ProcessEx
 
-## v0.5.0 - TBD
+## v0.5.0 - 2024-01-05
 
 * Added support for `ProcessIntString` parameters accepting `uint` values as returned by WMI/CIM calls
 * Added `-ArgumentEscaping` to `Start-ProcessWith` and `Start-ProcessEx`
