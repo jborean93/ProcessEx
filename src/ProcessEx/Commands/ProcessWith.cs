@@ -1,11 +1,11 @@
 using ProcessEx.Native;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Threading;
 
 namespace ProcessEx.Commands
 {
@@ -14,8 +14,10 @@ namespace ProcessEx.Commands
         DefaultParameterSetName = "FilePathCredential"
     )]
     [OutputType(null, typeof(ProcessInfo))]
-    public class StartProcessWith : PSCmdlet
+    public class StartProcessWith : PSCmdlet, IDisposable
     {
+        private CancellationTokenSource? _cancelSource;
+
         [Parameter(
             Mandatory = true,
             Position = 0,
@@ -201,8 +203,11 @@ namespace ProcessEx.Commands
             WriteVerbose($"Process created with PID {info.ProcessId} and TID {info.ThreadId}");
             if (Wait)
             {
-                WriteVerbose("Resuming process and waiting for it to complete");
-                ProcessRunner.ResumeAndWait(info);
+                using (_cancelSource = new())
+                {
+                    WriteVerbose("Resuming process and waiting for it to complete");
+                    ProcessRunner.ResumeAndWait(info, _cancelSource.Token);
+                }
             }
             else if (!suspended)
             {
@@ -213,5 +218,17 @@ namespace ProcessEx.Commands
             if (PassThru)
                 WriteObject(info);
         }
+
+        protected override void StopProcessing()
+        {
+            _cancelSource?.Cancel();
+        }
+
+
+        public void Dispose()
+        {
+            _cancelSource?.Dispose();
+        }
+
     }
 }

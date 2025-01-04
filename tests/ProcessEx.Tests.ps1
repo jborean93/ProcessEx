@@ -1239,6 +1239,71 @@ Describe "Start-ProcessEx" {
         }
     }
 
+    It "Cancels process -Wait" {
+        $stdout = [System.IO.Pipes.AnonymousPipeServerStream]::new("In", "Inheritable")
+        $stdin = [System.IO.Pipes.AnonymousPipeServerStream]::new("Out", "Inheritable")
+        try {
+            $si = New-StartupInfo -StandardOutput $stdout.ClientSafePipeHandle -StandardInput $stdin.ClientSafePipeHandle
+            $procParams = @{
+                FilePath = 'powershell.exe'
+                ArgumentList = '-Command', "-"
+                StartupInfo = $si
+                Wait = $true
+                PassThru = $true
+            }
+
+            $projectPath = Split-Path -Path $PSScriptRoot -Parent
+            $ps = [PowerShell]::Create()
+            [void]$ps.AddCommand("Import-Module").AddParameter("Name", "$projectPath\output\ProcessEx").AddStatement()
+            $task = $ps.AddCommand('Start-ProcessEx').AddParameters($procParams).BeginInvoke()
+            try {
+                $stdinWriter = [IO.StreamWriter]::new($stdin)
+                $stdinWriter.AutoFlush = $true
+                $stdoutReader = [IO.StreamReader]::new($stdout)
+
+                $stdinWriter.WriteLine('$pid')
+                [int]$childPid1 = $stdoutReader.ReadLine()
+
+                # Wait until we know the process has started (read the input) before disposing the client copies
+                $stdin.DisposeLocalCopyOfClientHandle()
+                $stdout.DisposeLocalCopyOfClientHandle()
+
+                $stdinWriter.WriteLine('(Start-Process powershell.exe -PassThru).Id')
+                [int]$childPid2 = $stdoutReader.ReadLine()
+                $stdoutReader.Dispose()
+
+                try {
+                    $spawnedProcess = Get-Process -Id $childPid1 -ErrorAction SilentlyContinue
+                    $spawnedProcess | Should -Not -Be $null
+                    $task.IsCompleted | Should -Be $false
+
+                    $stdinWriter.WriteLine('exit')
+                    $stdinWriter.Dispose()
+                    $spawnedProcess.WaitForExit(5000)
+                    $task.IsCompleted | Should -Be $false
+
+                    Wait-Process -Id $childPid1 -Timeout 5 -ErrorAction SilentlyContinue
+                    $task.IsCompleted | Should -Be $false
+
+                    $null = $ps.BeginStop($null, $null)
+                    $task.AsyncWaitHandle.WaitOne(5000)
+                    $task.IsCompleted | Should -Be $true
+                }
+                finally {
+                    Stop-Process -Id $childPid1 -Force -ErrorAction SilentlyContinue
+                    Stop-Process -Id $childPid2 -Force -ErrorAction SilentlyContinue
+                }
+            }
+            finally {
+                $ps.EndInvoke($task)
+            }
+        }
+        finally {
+            $stdout.Dispose()
+            $stdin.Dispose()
+        }
+    }
+
     It "Fails with suspend and -Wait" {
         $err = $null
         Start-ProcessEx pwsh -CreationFlags Suspended -Wait -ErrorAction SilentlyContinue -ErrorVariable err

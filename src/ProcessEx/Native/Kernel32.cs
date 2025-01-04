@@ -596,6 +596,28 @@ namespace ProcessEx.Native
             return handle;
         }
 
+        [DllImport("Kernel32.dll", EntryPoint = "PostQueuedCompletionStatus", SetLastError = true)]
+        private static extern bool NativePostQueuedCompletionStatus(
+            SafeHandle CompletionPort,
+            uint dwNumberOfBytesTransferred,
+            nint dwCompletionKey,
+            nint lpOverlapped);
+
+        public static void PostQueuedCompletionStatus(
+            SafeHandle completionPort,
+            uint data,
+            nint completionKey)
+        {
+            if (!NativePostQueuedCompletionStatus(
+                completionPort,
+                data,
+                completionKey,
+                IntPtr.Zero))
+            {
+                throw new NativeException("PostQueuedCompletionStatus");
+            }
+        }
+
         [DllImport("Kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern bool QueryFullProcessImageNameW(
             SafeHandle hProcess,
