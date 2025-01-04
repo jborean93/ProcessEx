@@ -23,11 +23,11 @@ Describe "Start-ProcessWith" {
         ([IO.Path]::GettempPath()), 'C:\Windows\TEMP' | ForEach-Object {
             $acl = Get-Acl -LiteralPath $_
             $acl.AddAccessRule($acl.AccessRuleFactory($user,
-                [System.Security.AccessControl.FileSystemRights]::FullControl,
-                $false,
-                [System.Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
-                [System.Security.AccessControl.PropagationFlags]::None,
-                [System.Security.AccessControl.AccessControlType]::Allow))
+                    [System.Security.AccessControl.FileSystemRights]::FullControl,
+                    $false,
+                    [System.Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
+                    [System.Security.AccessControl.PropagationFlags]::None,
+                    [System.Security.AccessControl.AccessControlType]::Allow))
             Set-Acl -LiteralPath $_ -AclObject $acl
         }
 
@@ -187,7 +187,7 @@ Describe "Start-ProcessWith" {
             [System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
         $systemName = $systemSid.Translate([System.Security.Principal.NTAccount]).Value
 
-        $actual = Get-Process -IncludeUserName | Where-Object UserName -eq $systemName | ForEach-Object {
+        $actual = Get-Process -IncludeUserName | Where-Object UserName -EQ $systemName | ForEach-Object {
             $systemToken = Get-ProcessToken -Process $_ -Access Duplicate, Impersonate, Query -ErrorAction SilentlyContinue
             if (-not $systemToken) { return }
 

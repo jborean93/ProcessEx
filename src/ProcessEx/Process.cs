@@ -13,6 +13,7 @@ using System.Security;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
+using System.Threading;
 
 namespace ProcessEx
 {
@@ -821,7 +822,9 @@ namespace ProcessEx
                 creationFlags, lpEnvironment, currentDirectory, si, ext ?? new Dictionary<string, object?>());
         }
 
-        internal static void ResumeAndWait(ProcessInfo processInfo)
+        internal static void ResumeAndWait(
+            ProcessInfo processInfo,
+            CancellationToken cancellationToken)
         {
             // Thanks to Raymond for these details https://devblogs.microsoft.com/oldnewthing/20130405-00/?p=4743
             int compPortSize = Marshal.SizeOf(typeof(Helpers.JOBOBJECT_ASSOCIATE_COMPLETION_PORT));
@@ -845,7 +848,12 @@ namespace ProcessEx
 
             // Resume the thread and wait until it has exited.
             Kernel32.ResumeThread(processInfo.Thread);
-            Kernel32.WaitForSingleObject(processInfo.Process, 0xFFFFFFFF);
+
+            const uint canceledCode = 0xFFFFFFFF;
+            using var cancelRegistration = cancellationToken.Register(() =>
+            {
+                Kernel32.PostQueuedCompletionStatus(ioPort, canceledCode, IntPtr.Zero);
+            });
 
             // Continue to poll the job until it receives JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO (4) that indicates
             // all other processes in that job have finished.
@@ -854,7 +862,7 @@ namespace ProcessEx
             {
                 Kernel32.GetQueuedCompletionStatus(ioPort, 0xFFFFFFFF, out completionCode, out var completionKey,
                     out var overlapped);
-            } while (completionCode != 4);
+            } while (completionCode != 4 && completionCode != canceledCode);
         }
 
         internal static Dictionary<string, string> ConvertEnvironmentBlock(SafeHandle block)
