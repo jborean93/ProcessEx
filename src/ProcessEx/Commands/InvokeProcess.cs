@@ -835,6 +835,7 @@ public sealed class InvokeProcessExCommand : InvokeProcessBase
 public sealed class InvokeProcessWithCommand : InvokeProcessBase
 {
     [Parameter]
+    [Credential]
     public PSCredential Credential { get; set; } = PSCredential.Empty;
 
     [Parameter]
