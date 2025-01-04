@@ -68,8 +68,9 @@ namespace ProcessEx.Commands
             Mandatory = true,
             ParameterSetName = "CommandLineCredential"
         )]
+        [Credential]
         [ValidateNotNull]
-        public PSCredential Credential { get; set; } = new PSCredential("dummy", new SecureString());
+        public PSCredential Credential { get; set; } = PSCredential.Empty;
 
         [Parameter(
             Mandatory = true,

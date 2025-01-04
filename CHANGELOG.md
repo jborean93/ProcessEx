@@ -4,6 +4,7 @@
 
 * Added support for `ProcessIntString` parameters accepting `uint` values as returned by WMI/CIM calls
 * Added `-ArgumentEscaping` to `Start-ProcessWith` and `Start-ProcessEx`
+* Added `Credential` attribute transformer to transform username to PSCredential prompt on `-Credential` parameters
 
 ## v0.4.0 - 2024-11-07
 
