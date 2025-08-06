@@ -39,8 +39,9 @@ jobs:
       shell: pwsh
       run: ./build.ps1 -Configuration $env:BUILD_CONFIGURATION -Task Build
       env:
-        AZURE_KEYVAULT_NAME: ${{ env.BUILD_CONFIGURATION == 'Release' && secrets.AZURE_KEYVAULT_NAME || '' }}
-        AZURE_KEYVAULT_CERT: ${{ env.BUILD_CONFIGURATION == 'Release' && secrets.AZURE_KEYVAULT_CERT || '' }}
+        AZURE_TS_NAME: ${{ env.BUILD_CONFIGURATION == 'Release' && secrets.AZURE_TS_NAME || '' }}
+        AZURE_TS_PROFILE: ${{ env.BUILD_CONFIGURATION == 'Release' && secrets.AZURE_TS_PROFILE || '' }}
+        AZURE_TS_ENDPOINT: ${{ env.BUILD_CONFIGURATION == 'Release' && secrets.AZURE_TS_ENDPOINT || '' }}
 
     - name: Capture PowerShell Module
       uses: actions/upload-artifact@v4
@@ -65,14 +66,6 @@ jobs:
           psversion: '5.1'
           arch: x86
           os: windows-latest
-        - name: PS_7.2_x64_Windows
-          psversion: '7.2.0'
-          arch: x64
-          os: windows-latest
-        - name: PS_7.3_x64_Windows
-          psversion: '7.3.0'
-          arch: x64
-          os: windows-latest
         - name: PS_7.4_x64_Windows
           psversion: '7.4.0'
           arch: x64
@@ -80,6 +73,10 @@ jobs:
         - name: PS_7.4_x86_Windows
           psversion: '7.4.0'
           arch: x86
+          os: windows-latest
+        - name: PS_7.5_x64_Windows
+          psversion: '7.5.0'
+          arch: x64
           os: windows-latest
 
     steps:
