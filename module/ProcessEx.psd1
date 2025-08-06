@@ -12,14 +12,14 @@
 
     # Script module or binary module file associated with this manifest.
     RootModule = if ($PSEdition -eq 'Core') {
-        'bin/net6.0-windows/ProcessEx.dll'
+        'bin/net8.0-windows/ProcessEx.dll'
     }
     else {
         'bin/net472/ProcessEx.dll'
     }
 
     # Version number of this module.
-    ModuleVersion = '0.5.0'
+    ModuleVersion = '0.6.0'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()

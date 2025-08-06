@@ -183,7 +183,7 @@ Function Assert-PowerShell {
         ARM64 { 'arm64' }
         default {
             $err = [ErrorRecord]::new(
-                [Exception]::new("Unsupported archecture requests '$_'"),
+                [Exception]::new("Unsupported architecture requests '$_'"),
                 "UnknownArch",
                 [ErrorCategory]::InvalidArgument,
                 $_

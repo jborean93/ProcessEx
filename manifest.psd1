@@ -1,14 +1,14 @@
 @{
-    InvokeBuildVersion = '5.11.3'
-    PesterVersion = '5.6.1'
+    InvokeBuildVersion = '5.14.14'
+    PesterVersion = '5.7.1'
     BuildRequirements = @(
         @{
             ModuleName = 'Microsoft.PowerShell.PSResourceGet'
-            ModuleVersion = '1.0.6'
+            ModuleVersion = '1.1.1'
         }
         @{
             ModuleName = 'OpenAuthenticode'
-            RequiredVersion = '0.4.0'
+            RequiredVersion = '0.6.1'
         }
         @{
             ModuleName = 'platyPS'

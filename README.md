@@ -16,7 +16,7 @@ Documentation for this module and details on the cmdlets included can be found [
 
 These cmdlets have the following requirements
 
-* PowerShell v5.1 or newer
+* PowerShell v5.1 or 7.4+
 * .NET Framework 4.7.2+ or .NET Core+
 * Windows Server 2008 R2/Windows 7 or newer
 
@@ -29,9 +29,11 @@ You can install this module by running;
 
 ```powershell
 # Install for only the current user
+Install-PSResource -Name ProcessEx -Scope CurrentUser
 Install-Module -Name ProcessEx -Scope CurrentUser
 
 # Install for all users
+Install-PSResource -Name ProcessEx -Scope AllUsers
 Install-Module -Name ProcessEx -Scope AllUsers
 ```
 
